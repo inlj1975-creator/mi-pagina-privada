@@ -77,7 +77,7 @@ function renderTareas(tareas) {
       const deleteButton = document.createElement("button");
       deleteButton.textContent = "Borrar";
       deleteButton.className = "btn-danger";
-      deleteButton.addEventListener("click", () => deleteTarea(tarea.id));
+      deleteButton.addEventListener("click", () => deleteTarea(tarea));
       actionsCell.appendChild(deleteButton);
     }
 
@@ -155,7 +155,7 @@ async function loadTareas() {
 
   const { data, error } = await window.supabaseClient
     .from("tareas")
-    .select("id, titulo, descripcion, proyecto_id, responsable_id, responsable_nombre, estado, fecha_inicio, fecha_termino")
+    .select("id, titulo, descripcion, proyecto_id, responsable_id, responsable_nombre, estado, fecha_inicio, fecha_termino, outlook_event_id")
     .order("fecha_inicio", { ascending: false });
 
   if (error) {
@@ -180,7 +180,7 @@ function startEdit(tarea) {
   cancelEditButton.style.display = "inline-block";
 }
 
-async function deleteTarea(id) {
+async function deleteTarea(tarea) {
   const confirmed = confirm("¿Seguro que quieres borrar esta tarea?");
   if (!confirmed) return;
 
@@ -193,11 +193,29 @@ async function deleteTarea(id) {
   const { error } = await window.supabaseClient
     .from("tareas")
     .delete()
-    .eq("id", id);
+    .eq("id", tarea.id);
 
   if (error) {
     formError.textContent = "No se pudo borrar la tarea.";
     return;
+  }
+
+  // Se manda con los datos de ANTES de borrar (ya no se puede volver a leer
+  // outlook_event_id una vez que la fila desapareció). Si no había evento
+  // sincronizado o el responsable nunca conectó Outlook, la función lo
+  // ignora sola (accion "delete" con datos faltantes -> skipped).
+  if (tarea.outlook_event_id && tarea.responsable_id) {
+    try {
+      await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
+        body: {
+          accion: "delete",
+          outlook_event_id: tarea.outlook_event_id,
+          responsable_id: tarea.responsable_id,
+        },
+      });
+    } catch (e) {
+      console.error("ms-sync-evento-tarea (delete):", e);
+    }
   }
 
   loadTareas();
@@ -225,13 +243,26 @@ form.addEventListener("submit", async (event) => {
 
   const editingId = idInput.value;
 
-  const { error } = editingId
-    ? await window.supabaseClient.from("tareas").update(payload).eq("id", editingId)
-    : await window.supabaseClient.from("tareas").insert(payload);
+  const { data, error } = editingId
+    ? await window.supabaseClient.from("tareas").update(payload).eq("id", editingId).select().single()
+    : await window.supabaseClient.from("tareas").insert(payload).select().single();
 
   if (error) {
     formError.textContent = "No se pudo guardar la tarea. Revisa que la fecha de término no sea anterior a la de inicio.";
     return;
+  }
+
+  // Un fallo al sincronizar con Outlook nunca debe verse como que la tarea
+  // no se guardó: ya se guardó arriba. Como mucho queda en la consola.
+  if (payload.responsable_id) {
+    try {
+      const { error: syncError } = await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
+        body: { tarea_id: data.id, accion: "upsert" },
+      });
+      if (syncError) console.error("ms-sync-evento-tarea:", syncError);
+    } catch (e) {
+      console.error("ms-sync-evento-tarea:", e);
+    }
   }
 
   clearForm();
