@@ -107,12 +107,15 @@ Deno.serve(async (req) => {
     if (accion === "upsert") {
       if (!tarea_id) return jsonResponse({ error: "Falta tarea_id" }, 400);
 
-      const { data: tarea } = await supabaseAdmin
+      const { data: tarea, error: tareaError } = await supabaseAdmin
         .from("tareas")
         .select("id, titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, outlook_event_id")
         .eq("id", tarea_id)
         .maybeSingle();
 
+      if (tareaError) {
+        return jsonResponse({ error: "Error leyendo la tarea: " + tareaError.message }, 500);
+      }
       if (!tarea) {
         return jsonResponse({ skipped: true, motivo: "no se encontró la tarea", tarea_id_recibido: tarea_id });
       }
