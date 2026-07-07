@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tareas</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Gestor de proyectos</h1>
+    <div class="header-right">
+      <nav id="main-nav" class="main-nav"></nav>
+      <span id="user-email" style="margin-right: 1rem; font-size: 0.9rem;"></span>
+      <button id="logout-button" class="btn-secondary">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+    <form id="task-form" class="project-form">
+      <input type="hidden" id="task-id" />
+      <div class="row">
+        <div class="field">
+          <label for="titulo">Título</label>
+          <input type="text" id="titulo" required />
+        </div>
+        <div class="field">
+          <label for="proyecto">Proyecto</label>
+          <select id="proyecto">
+            <option value="">(sin proyecto)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="estado">Estado</label>
+          <select id="estado" required>
+            <option value="Pendiente">Pendiente</option>
+            <option value="En curso">En curso</option>
+            <option value="Hecha">Hecha</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="responsable_id">Responsable</label>
+          <select id="responsable_id">
+            <option value="">(sin responsable)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fecha_inicio">Fecha de inicio</label>
+          <input type="date" id="fecha_inicio" />
+        </div>
+        <div class="field">
+          <label for="fecha_termino">Fecha de término</label>
+          <input type="date" id="fecha_termino" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" rows="2"></textarea>
+      </div>
+      <p class="error-message" id="form-error"></p>
+      <button type="submit" class="btn-primary" id="submit-button">Crear tarea</button>
+      <button type="button" class="btn-secondary" id="cancel-edit-button" style="display: none;">Cancelar edición</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Proyecto</th>
+          <th>Responsable</th>
+          <th>Estado</th>
+          <th>Inicio</th>
+          <th>Término</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tasks-table-body">
+        <!-- Las filas se generan dinámicamente desde js/tareas.js -->
+      </tbody>
+    </table>
+  </main>
+
+  <script src="js/nav.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/tareas.js"></script>
+</body>
+</html>

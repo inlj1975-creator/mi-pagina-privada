@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ficha de proyecto</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Gestor de proyectos</h1>
+    <div class="header-right">
+      <nav id="main-nav" class="main-nav"></nav>
+      <span id="user-email" style="margin-right: 1rem; font-size: 0.9rem;"></span>
+      <button id="logout-button" class="btn-secondary">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+    <p class="error-message" id="proyecto-error"></p>
+
+    <div id="proyecto-detalle" class="project-form">
+      <h2 id="proyecto-nombre"></h2>
+      <p><strong>Descripción:</strong> <span id="proyecto-descripcion"></span></p>
+      <p><strong>Estado:</strong> <span id="proyecto-estado"></span></p>
+      <p><strong>Fecha:</strong> <span id="proyecto-fecha"></span></p>
+
+      <h3>Cliente</h3>
+      <div id="cliente-detalle">
+        <p><strong>Nombre:</strong> <span id="cliente-nombre"></span></p>
+        <p><strong>Email:</strong> <span id="cliente-email"></span></p>
+        <p><strong>Teléfono:</strong> <span id="cliente-telefono"></span></p>
+        <p><strong>Empresa:</strong> <span id="cliente-empresa"></span></p>
+      </div>
+      <p id="sin-cliente" style="display: none;">Este proyecto no tiene cliente asociado.</p>
+    </div>
+
+    <div class="project-form">
+      <h3>Tareas</h3>
+      <table id="tareas-tabla">
+        <thead>
+          <tr><th>Título</th><th>Estado</th><th>Responsable</th><th>Inicio</th><th>Término</th></tr>
+        </thead>
+        <tbody id="tareas-tbody"></tbody>
+      </table>
+      <p id="sin-tareas" style="display: none;">Sin tareas.</p>
+    </div>
+
+    <div class="project-form">
+      <h3>Facturas</h3>
+      <table id="facturas-tabla">
+        <thead>
+          <tr><th>Número</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr>
+        </thead>
+        <tbody id="facturas-tbody"></tbody>
+      </table>
+      <p id="sin-facturas" style="display: none;">Sin facturas.</p>
+    </div>
+  </main>
+
+  <script src="js/nav.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/proyecto.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facturas</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Gestor de proyectos</h1>
+    <div class="header-right">
+      <nav id="main-nav" class="main-nav"></nav>
+      <span id="user-email" style="margin-right: 1rem; font-size: 0.9rem;"></span>
+      <button id="logout-button" class="btn-secondary">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+    <form id="invoice-form" class="project-form">
+      <input type="hidden" id="invoice-id" />
+      <div class="row">
+        <div class="field">
+          <label for="numero">Número</label>
+          <input type="text" id="numero" required />
+        </div>
+        <div class="field">
+          <label for="monto">Monto</label>
+          <input type="number" id="monto" step="0.01" min="0" required />
+        </div>
+        <div class="field">
+          <label for="proyecto">Proyecto</label>
+          <select id="proyecto">
+            <option value="">(sin proyecto)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="estado">Estado</label>
+          <select id="estado" required>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Pagada">Pagada</option>
+            <option value="Vencida">Vencida</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fecha">Fecha</label>
+          <input type="date" id="fecha" />
+        </div>
+      </div>
+      <p class="error-message" id="form-error"></p>
+      <button type="submit" class="btn-primary" id="submit-button">Crear factura</button>
+      <button type="button" class="btn-secondary" id="cancel-edit-button" style="display: none;">Cancelar edición</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Monto</th>
+          <th>Proyecto</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="invoices-table-body">
+        <!-- Las filas se generan dinámicamente desde js/facturas.js -->
+      </tbody>
+    </table>
+  </main>
+
+  <script src="js/nav.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/facturas.js"></script>
+</body>
+</html>

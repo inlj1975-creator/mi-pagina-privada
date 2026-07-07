@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendario</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Gestor de proyectos</h1>
+    <div class="header-right">
+      <nav id="main-nav" class="main-nav"></nav>
+      <span id="user-email" style="margin-right: 1rem; font-size: 0.9rem;"></span>
+      <button id="logout-button" class="btn-secondary">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="calendario-main">
+    <div class="calendario-controles">
+      <button id="btn-mes-anterior" class="calendario-btn-nav">←</button>
+      <span id="mes-label" class="calendario-mes-label"></span>
+      <button id="btn-mes-siguiente" class="calendario-btn-nav">→</button>
+    </div>
+    <p class="error-message" id="calendario-error"></p>
+    <div id="calendario-grid" class="calendario-grid"></div>
+  </main>
+
+  <script src="js/nav.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/calendario.js"></script>
+</body>
+</html>

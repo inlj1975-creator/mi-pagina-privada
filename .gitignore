@@ -1,0 +1,7 @@
+# Configuración con claves reales: nunca se sube al repositorio
+js/config.js
+.env
+.env.*
+
+# Config local de Claude Code (específica de esta máquina, no del proyecto)
+.claude/settings.local.json
