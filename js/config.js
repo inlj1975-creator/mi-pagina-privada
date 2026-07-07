@@ -1,5 +1,6 @@
-// Este archivo NO se sube a git (mira .gitignore). Pon aquí tus valores reales.
-// Los encuentras en: Supabase Dashboard -> Project Settings -> API.
+// Este archivo SÍ se sube a git: ninguno de estos valores es secreto
+// (están pensados para vivir en el navegador). Los encuentras en:
+// Supabase Dashboard -> Project Settings -> API, y entra.microsoft.com -> tu app.
 
 // Reemplaza el texto entre comillas (incluyendo las comillas) con tu Project URL real:
 const SUPABASE_URL = "https://zurfciuqrsnlcafdatzf.supabase.co";
