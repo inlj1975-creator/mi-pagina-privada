@@ -236,9 +236,8 @@ la conexión de Outlook de un usuario que no es quien hizo el pedido).
 
 ## Próximos pasos pendientes
 
-- Integración con Outlook (ver sección arriba): falta la Fase 2
-  (`configuracion.html` + `oauth-callback.html` + Edge Function
-  `ms-oauth-exchange` para que cada usuario conecte su cuenta), Fase 3
-  (Edge Function `ms-sync-evento-tarea` + enganche en `js/tareas.js`) y
-  Fase 4 (Edge Function `ms-enviar-notificacion`). La base de datos (Fase 1)
-  ya está en `sql/schema.sql`, falta pegarla en el SQL Editor de Supabase.
+- Integración con Outlook (ver sección arriba): completas y funcionando
+  las Fases 1-3 (base de datos, conexión OAuth por usuario, sync de
+  calendario). Falta la Fase 4: Edge Function `ms-enviar-notificacion` +
+  enganche en `js/tareas.js` para avisar por mail cuando se asigna una
+  tarea.
