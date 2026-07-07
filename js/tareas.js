@@ -260,7 +260,11 @@ form.addEventListener("submit", async (event) => {
         "ms-sync-evento-tarea",
         { body: { tarea_id: data.id, accion: "upsert" } }
       );
-      console.log("ms-sync-evento-tarea resultado:", syncResult, syncError);
+      if (syncError && syncError.context && typeof syncError.context.json === "function") {
+        console.log("ms-sync-evento-tarea cuerpo de error:", await syncError.context.json());
+      } else {
+        console.log("ms-sync-evento-tarea resultado:", syncResult, syncError);
+      }
     } catch (e) {
       console.error("ms-sync-evento-tarea:", e);
     }
