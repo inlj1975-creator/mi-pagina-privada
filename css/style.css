@@ -210,6 +210,7 @@ td.actions {
 .badge-en-curso { background: #2563eb; }
 .badge-completado { background: #16a34a; }
 .badge-hecha { background: #16a34a; }
+.badge-gris { background: #6b7280; }
 
 /* Menú de navegación */
 .header-right {

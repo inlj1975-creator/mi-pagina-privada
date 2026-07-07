@@ -16,8 +16,16 @@ Postgres + RLS. En el navegador solo se usa la **publishable key**
 - `proyectos.html` / `clientes.html` / `proveedores.html` / `ofertas.html` / `facturas.html` / `tareas.html` — páginas privadas con formulario + lista (CRUD).
 - `proyecto.html` / `proyectos-tablero.html` / `calendario.html` — vistas de solo lectura (ver sección "Páginas de detalle y vistas").
 - `css/style.css` — estilos compartidos por todas las páginas.
-- `js/config.js` — URL y publishable key reales (NO se sube a git).
-- `js/config.example.js` — plantilla de `config.js` (sí se sube a git).
+- `js/config.js` — URL, publishable key y datos de la app de Microsoft
+  (client_id/tenant_id/redirect_uri). Sí se sube a git: ninguno de estos
+  valores es secreto (están pensados para vivir en el navegador; la
+  protección real es RLS del lado de Supabase y el consentimiento OAuth del
+  lado de Microsoft), y el repo necesita este archivo para que el sitio
+  publicado en GitHub Pages funcione. El client_secret de Microsoft es lo
+  único realmente sensible acá — ese nunca está en este archivo, vive solo
+  como Supabase Function secret.
+- `js/config.example.js` — mismo contenido que `config.js`, como plantilla
+  para levantar el proyecto en otra cuenta de Supabase/Azure.
 - `js/supabaseClient.js` — crea el cliente único de Supabase (`window.supabaseClient`).
 - `js/auth.js` — lógica de login (usada en `index.html`).
 - `js/auth-guard.js` — protege las páginas privadas; redirige si no hay sesión; maneja logout; carga el rol del usuario actual (`window.currentUserRole`) y expone `window.authReady`. Compartido por todas las páginas privadas, sin cambios por entidad.
@@ -171,6 +179,37 @@ Convive con `js/auth-guard.js` sin pisarse: `nav.js` solo llena el
 `#user-email` y `#logout-button`, que quedan estáticos en el HTML de cada
 página (no los genera `nav.js`).
 
+## Integración con Microsoft Outlook
+
+El sitio está publicado en GitHub Pages (`https://inlj1975-creator.github.io/mi-pagina-privada/`),
+necesario porque Microsoft exige una URL `https://` pública como redirect
+URI de OAuth — hasta esta integración el proyecto no estaba hosteado en
+ningún lado.
+
+Alcance: (a) sync de un solo sentido, Tareas → evento en el calendario de
+Outlook del **responsable** de la tarea (no al revés); (b) email de aviso
+al asignar una tarea a alguien, desde `info@aitbp.com`.
+
+Se registró una app en Azure/Entra ID (tenant "Melirrepu") con permisos
+Graph delegados (`Calendars.ReadWrite`, `offline_access`, `User.Read`) y de
+aplicación (`Mail.Send`, con admin consent). El `client_id`/`tenant_id`
+(no son secretos) van en `js/config.js`; el `client_secret` (sí es
+secreto) vive únicamente como Supabase Function secret, nunca en el repo.
+
+Tabla nueva `ms_conexiones` (`sql/schema.sql`, sección 21): guarda el token
+OAuth de cada usuario que conectó su Outlook. Es la **única** tabla del
+proyecto que no sigue el patrón "lista compartida" — cada fila es
+visible/editable solo por su dueño (`using (user_id = auth.uid())`),
+porque son credenciales de acceso a un calendario personal de terceros,
+no datos de negocio. Columna nueva `tareas.outlook_event_id` (misma
+sección): id del evento ya creado en Outlook, para poder actualizarlo o
+borrarlo en vez de duplicarlo.
+
+Primer uso de **Supabase Edge Functions** en el proyecto (hasta ahora todo
+era `sql/schema.sql` pegado a mano): requiere Supabase CLI
+(`supabase login` + `link`) y `supabase secrets set` para
+`MS_TENANT_ID`/`MS_CLIENT_ID`/`MS_CLIENT_SECRET`/`MS_REDIRECT_URI`/`MS_REMITENTE_EMAIL`.
+
 ## Patrón de seguridad al agregar una entidad nueva
 
 1. `create table <entidad> (...)`
@@ -180,4 +219,9 @@ página (no los genera `nav.js`).
 
 ## Próximos pasos pendientes
 
-- (ninguno pendiente por ahora)
+- Integración con Outlook (ver sección arriba): falta la Fase 2
+  (`configuracion.html` + `oauth-callback.html` + Edge Function
+  `ms-oauth-exchange` para que cada usuario conecte su cuenta), Fase 3
+  (Edge Function `ms-sync-evento-tarea` + enganche en `js/tareas.js`) y
+  Fase 4 (Edge Function `ms-enviar-notificacion`). La base de datos (Fase 1)
+  ya está en `sql/schema.sql`, falta pegarla en el SQL Editor de Supabase.

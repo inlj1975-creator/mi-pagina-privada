@@ -3,6 +3,7 @@
 const navLinks = [
   { label: "Tablero", href: "proyectos-tablero.html" },
   { label: "Calendario", href: "calendario.html" },
+  { label: "Mi cuenta", href: "configuracion.html" },
   {
     label: "Proyectos",
     items: [

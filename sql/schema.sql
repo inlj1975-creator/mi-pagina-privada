@@ -533,3 +533,59 @@ create policy "Admin, director o gerente pueden borrar tareas"
   on tareas for delete
   to authenticated
   using (public.puede_borrar());
+
+-- 21) Integración con Microsoft Outlook (Microsoft Graph API).
+--
+-- a) ms_conexiones: guarda el token OAuth de cada usuario que conectó su
+--    cuenta de Outlook (para poder crear eventos en SU calendario). A
+--    diferencia de las 6 tablas "lista compartida" del proyecto
+--    (using(true) en select/insert/update), esta es una excepción
+--    deliberada: son credenciales de acceso al calendario personal de un
+--    tercero (Microsoft), y filtrarlas entre compañeros permitiría leer o
+--    escribir el calendario ajeno desde fuera de la app. Por eso cada fila
+--    es visible/editable solo por su propio dueño (auth.uid()). Las Edge
+--    Functions leen/escriben filas ajenas usando la service role key, que
+--    en Supabase evita RLS por diseño, sin necesitar una política aparte.
+create table if not exists ms_conexiones (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  ms_access_token text not null,
+  ms_refresh_token text not null,
+  ms_token_expires_at timestamptz not null,
+  ms_scope text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table ms_conexiones enable row level security;
+
+create policy "Usuario ve solo su propia conexión"
+  on ms_conexiones for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy "Usuario crea solo su propia conexión"
+  on ms_conexiones for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+create policy "Usuario actualiza solo su propia conexión"
+  on ms_conexiones for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create policy "Usuario borra solo su propia conexión"
+  on ms_conexiones for delete
+  to authenticated
+  using (user_id = auth.uid());
+
+grant select, insert, update, delete on public.ms_conexiones to authenticated;
+
+-- b) outlook_event_id en tareas: id del evento ya creado en Outlook para
+--    esa tarea (si el responsable conectó su cuenta). Permite actualizar o
+--    borrar el evento correcto en vez de crear uno nuevo cada vez que se
+--    edita la tarea. La escriben las Edge Functions (vía service role);
+--    no requiere cambios de política porque insert/update de tareas ya
+--    son using(true)/with check(true).
+alter table tareas
+  add column if not exists outlook_event_id text;

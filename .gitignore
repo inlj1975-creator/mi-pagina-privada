@@ -1,5 +1,7 @@
-# Configuración con claves reales: nunca se sube al repositorio
-js/config.js
+# .env sí puede contener secretos reales (a diferencia de js/config.js,
+# que solo tiene la publishable key de Supabase y los client_id/tenant_id
+# de Microsoft — ninguno de los dos es secreto, están pensados para vivir
+# en el navegador; la protección real es RLS del lado de Supabase).
 .env
 .env.*
 
