@@ -113,8 +113,11 @@ Deno.serve(async (req) => {
         .eq("id", tarea_id)
         .maybeSingle();
 
-      if (!tarea || !tarea.responsable_id) {
-        return jsonResponse({ skipped: true, motivo: "sin tarea o sin responsable" });
+      if (!tarea) {
+        return jsonResponse({ skipped: true, motivo: "no se encontró la tarea", tarea_id_recibido: tarea_id });
+      }
+      if (!tarea.responsable_id) {
+        return jsonResponse({ skipped: true, motivo: "la tarea no tiene responsable_id", tarea });
       }
 
       const fechaInicio = tarea.fecha_inicio || tarea.fecha_termino;
