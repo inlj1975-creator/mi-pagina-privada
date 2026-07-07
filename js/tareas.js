@@ -256,10 +256,11 @@ form.addEventListener("submit", async (event) => {
   // no se guardó: ya se guardó arriba. Como mucho queda en la consola.
   if (payload.responsable_id) {
     try {
-      const { error: syncError } = await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
-        body: { tarea_id: data.id, accion: "upsert" },
-      });
-      if (syncError) console.error("ms-sync-evento-tarea:", syncError);
+      const { data: syncResult, error: syncError } = await window.supabaseClient.functions.invoke(
+        "ms-sync-evento-tarea",
+        { body: { tarea_id: data.id, accion: "upsert" } }
+      );
+      console.log("ms-sync-evento-tarea resultado:", syncResult, syncError);
     } catch (e) {
       console.error("ms-sync-evento-tarea:", e);
     }
