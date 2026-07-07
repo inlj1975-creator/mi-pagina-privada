@@ -19,10 +19,13 @@ const fechaTerminoInput = document.getElementById("fecha_termino");
 let proyectosPorId = new Map();
 let perfilesPorId = new Map();
 
-// Responsable que tenía la tarea ANTES de este edit (o null si es una
-// tarea nueva). Sirve para distinguir "recién asignada" de "ya la tenía",
-// y así mandar el email de aviso solo en el primer caso.
+// Responsable/fechas que tenía la tarea ANTES de este edit (o null si es
+// una tarea nueva). Sirve para distinguir "recién asignada"/"le cambiaron
+// la fecha" de "no cambió nada relevante", y así no mandar un aviso de
+// más en cada guardado.
 let editingResponsableIdPrevio = null;
+let editingFechaInicioPrevia = null;
+let editingFechaTerminoPrevia = null;
 
 function estadoClass(estado) {
   if (estado === "En curso") return "estado-en-curso";
@@ -34,6 +37,8 @@ function clearForm() {
   form.reset();
   idInput.value = "";
   editingResponsableIdPrevio = null;
+  editingFechaInicioPrevia = null;
+  editingFechaTerminoPrevia = null;
   submitButton.textContent = "Crear tarea";
   cancelEditButton.style.display = "none";
 }
@@ -183,6 +188,8 @@ function startEdit(tarea) {
   fechaTerminoInput.value = tarea.fecha_termino || "";
 
   editingResponsableIdPrevio = tarea.responsable_id || null;
+  editingFechaInicioPrevia = tarea.fecha_inicio || null;
+  editingFechaTerminoPrevia = tarea.fecha_termino || null;
   submitButton.textContent = "Guardar cambios";
   cancelEditButton.style.display = "inline-block";
 }
@@ -262,6 +269,10 @@ form.addEventListener("submit", async (event) => {
   // Un fallo al sincronizar con Outlook nunca debe verse como que la tarea
   // no se guardó: ya se guardó arriba. Como mucho queda en la consola.
   const esAsignacionNueva = payload.responsable_id && payload.responsable_id !== editingResponsableIdPrevio;
+  const cambiaronFechas =
+    payload.responsable_id &&
+    !esAsignacionNueva &&
+    (payload.fecha_inicio !== editingFechaInicioPrevia || payload.fecha_termino !== editingFechaTerminoPrevia);
 
   if (payload.responsable_id) {
     try {
@@ -274,10 +285,10 @@ form.addEventListener("submit", async (event) => {
     }
   }
 
-  if (esAsignacionNueva) {
+  if (esAsignacionNueva || cambiaronFechas) {
     try {
       const { error: mailError } = await window.supabaseClient.functions.invoke("ms-enviar-notificacion", {
-        body: { tarea_id: data.id },
+        body: { tarea_id: data.id, motivo: esAsignacionNueva ? "asignacion" : "fechas" },
       });
       if (mailError) console.error("ms-enviar-notificacion:", mailError);
     } catch (e) {

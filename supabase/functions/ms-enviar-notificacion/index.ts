@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { tarea_id } = await req.json();
+    const { tarea_id, motivo = "asignacion" } = await req.json();
     if (!tarea_id) return jsonResponse({ error: "Falta tarea_id" }, 400);
 
     const supabaseAdmin = createClient(
@@ -81,12 +81,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "No se pudo obtener token de aplicación de Microsoft" }, 500);
     }
 
+    const primeraLinea =
+      motivo === "fechas"
+        ? `Cambiaron las fechas de tu tarea "${tarea.titulo}".`
+        : `Se te asignó la tarea "${tarea.titulo}".`;
+
     const cuerpo = [
-      `Se te asignó la tarea "${tarea.titulo}".`,
+      primeraLinea,
       tarea.descripcion ? `\nDescripción: ${tarea.descripcion}` : "",
       tarea.fecha_inicio ? `\nInicio: ${tarea.fecha_inicio}` : "",
       tarea.fecha_termino ? `\nTérmino: ${tarea.fecha_termino}` : "",
     ].join("");
+
+    const asunto =
+      motivo === "fechas" ? `Cambiaron las fechas: ${tarea.titulo}` : `Nueva tarea asignada: ${tarea.titulo}`;
 
     const remitente = Deno.env.get("MS_REMITENTE_EMAIL");
 
@@ -98,7 +106,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         message: {
-          subject: `Nueva tarea asignada: ${tarea.titulo}`,
+          subject: asunto,
           body: { contentType: "Text", content: cuerpo },
           toRecipients: [{ emailAddress: { address: perfil.email } }],
         },
