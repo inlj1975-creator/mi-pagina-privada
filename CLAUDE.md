@@ -229,6 +229,10 @@ la conexión de Outlook de un usuario que no es quien hizo el pedido).
 2. `alter table <entidad> enable row level security;`
 3. Políticas para el rol `authenticated`: select/insert/update con `using (true)` / `with check (true)`; delete con `using (public.puede_borrar())`.
 4. `grant select, insert, update, delete on public.<entidad> to authenticated;` — **no omitir este paso**, sin él las políticas nunca llegan a evaluarse.
+5. `service_role` (la secret key, usada por Edge Functions) ya queda
+   cubierto automáticamente gracias al `alter default privileges` de la
+   sección 21 de `schema.sql` — no hace falta un GRANT aparte para tablas
+   nuevas creadas después de esa migración.
 
 ## Próximos pasos pendientes
 

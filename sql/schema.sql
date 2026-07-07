@@ -589,3 +589,20 @@ grant select, insert, update, delete on public.ms_conexiones to authenticated;
 --    son using(true)/with check(true).
 alter table tareas
   add column if not exists outlook_event_id text;
+
+-- c) A diferencia de "authenticated" (usado por el navegador), a
+--    "service_role" (el rol de la secret key, usado por las Edge
+--    Functions) nunca se le habían dado permisos sobre ninguna tabla en
+--    este proyecto — RLS y GRANT son independientes: bypassear RLS no
+--    alcanza, Postgres igual exige el GRANT explícito. ms-sync-evento-tarea
+--    lo necesita para leer/actualizar tareas y ms_conexiones de un usuario
+--    que no es quien hizo el pedido (el responsable de la tarea).
+grant usage on schema public to service_role;
+grant select, insert, update, delete on public.tareas to service_role;
+grant select, insert, update, delete on public.perfiles to service_role;
+grant select, insert, update, delete on public.ms_conexiones to service_role;
+
+-- Para que cualquier tabla nueva que se agregue después también quede
+-- accesible a service_role sin tener que acordarse de este paso cada vez.
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
