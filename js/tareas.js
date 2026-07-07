@@ -19,6 +19,11 @@ const fechaTerminoInput = document.getElementById("fecha_termino");
 let proyectosPorId = new Map();
 let perfilesPorId = new Map();
 
+// Responsable que tenía la tarea ANTES de este edit (o null si es una
+// tarea nueva). Sirve para distinguir "recién asignada" de "ya la tenía",
+// y así mandar el email de aviso solo en el primer caso.
+let editingResponsableIdPrevio = null;
+
 function estadoClass(estado) {
   if (estado === "En curso") return "estado-en-curso";
   if (estado === "Hecha") return "estado-completado";
@@ -28,6 +33,7 @@ function estadoClass(estado) {
 function clearForm() {
   form.reset();
   idInput.value = "";
+  editingResponsableIdPrevio = null;
   submitButton.textContent = "Crear tarea";
   cancelEditButton.style.display = "none";
 }
@@ -176,6 +182,7 @@ function startEdit(tarea) {
   fechaInicioInput.value = tarea.fecha_inicio || "";
   fechaTerminoInput.value = tarea.fecha_termino || "";
 
+  editingResponsableIdPrevio = tarea.responsable_id || null;
   submitButton.textContent = "Guardar cambios";
   cancelEditButton.style.display = "inline-block";
 }
@@ -254,6 +261,8 @@ form.addEventListener("submit", async (event) => {
 
   // Un fallo al sincronizar con Outlook nunca debe verse como que la tarea
   // no se guardó: ya se guardó arriba. Como mucho queda en la consola.
+  const esAsignacionNueva = payload.responsable_id && payload.responsable_id !== editingResponsableIdPrevio;
+
   if (payload.responsable_id) {
     try {
       const { error: syncError } = await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
@@ -262,6 +271,17 @@ form.addEventListener("submit", async (event) => {
       if (syncError) console.error("ms-sync-evento-tarea:", syncError);
     } catch (e) {
       console.error("ms-sync-evento-tarea:", e);
+    }
+  }
+
+  if (esAsignacionNueva) {
+    try {
+      const { error: mailError } = await window.supabaseClient.functions.invoke("ms-enviar-notificacion", {
+        body: { tarea_id: data.id },
+      });
+      if (mailError) console.error("ms-enviar-notificacion:", mailError);
+    } catch (e) {
+      console.error("ms-enviar-notificacion:", e);
     }
   }
 
