@@ -236,8 +236,5 @@ la conexión de Outlook de un usuario que no es quien hizo el pedido).
 
 ## Próximos pasos pendientes
 
-- Integración con Outlook (ver sección arriba): completas y funcionando
-  las Fases 1-3 (base de datos, conexión OAuth por usuario, sync de
-  calendario). Falta la Fase 4: Edge Function `ms-enviar-notificacion` +
-  enganche en `js/tareas.js` para avisar por mail cuando se asigna una
-  tarea.
+- (ninguno pendiente por ahora — integración con Outlook completa: sync de
+  calendario y email de notificación funcionando)
