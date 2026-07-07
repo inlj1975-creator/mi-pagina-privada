@@ -80,9 +80,14 @@ Deno.serve(async (req) => {
   try {
     const { tarea_id, accion, outlook_event_id, responsable_id } = await req.json();
 
+    // "SUPABASE_SECRET_KEY" (sb_secret_...) es la clave de máximo privilegio
+    // del sistema nuevo de claves de Supabase — hace de reemplazo del
+    // "service role key" clásico. Salta RLS por completo, por eso esta
+    // función puede leer la tarea y la conexión de Outlook de CUALQUIER
+    // usuario (el responsable), no solo del que hizo el pedido.
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SECRET_KEY")!
     );
 
     if (accion === "delete") {
