@@ -6,16 +6,36 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Sin estos headers, el navegador bloquea la respuesta por CORS: la
+// página vive en github.io y la función en supabase.co, orígenes
+// distintos. "*" es suficiente acá (no hay cookies de por medio, la
+// autenticación viaja en el header Authorization).
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const { code, redirect_uri } = await req.json();
     if (!code || !redirect_uri) {
-      return new Response(JSON.stringify({ error: "Falta code o redirect_uri" }), { status: 400 });
+      return jsonResponse({ error: "Falta code o redirect_uri" }, 400);
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "No autenticado" }), { status: 401 });
+      return jsonResponse({ error: "No autenticado" }, 401);
     }
 
     const supabase = createClient(
@@ -26,7 +46,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "No autenticado" }), { status: 401 });
+      return jsonResponse({ error: "No autenticado" }, 401);
     }
 
     const tokenResponse = await fetch(
@@ -48,9 +68,9 @@ Deno.serve(async (req) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok) {
-      return new Response(
-        JSON.stringify({ error: tokenData.error_description || "Error al canjear el código con Microsoft" }),
-        { status: 400 }
+      return jsonResponse(
+        { error: tokenData.error_description || "Error al canjear el código con Microsoft" },
+        400
       );
     }
 
@@ -66,13 +86,11 @@ Deno.serve(async (req) => {
     });
 
     if (upsertError) {
-      return new Response(JSON.stringify({ error: upsertError.message }), { status: 500 });
+      return jsonResponse({ error: upsertError.message }, 500);
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: true });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return jsonResponse({ error: String(e) }, 500);
   }
 });
