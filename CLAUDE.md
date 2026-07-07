@@ -206,9 +206,20 @@ sección): id del evento ya creado en Outlook, para poder actualizarlo o
 borrarlo en vez de duplicarlo.
 
 Primer uso de **Supabase Edge Functions** en el proyecto (hasta ahora todo
-era `sql/schema.sql` pegado a mano): requiere Supabase CLI
-(`supabase login` + `link`) y `supabase secrets set` para
-`MS_TENANT_ID`/`MS_CLIENT_ID`/`MS_CLIENT_SECRET`/`MS_REDIRECT_URI`/`MS_REMITENTE_EMAIL`.
+era `sql/schema.sql` pegado a mano). Se despliegan a mano desde el editor
+del dashboard de Supabase (Edge Functions → Via Editor), no con el CLI: en
+esta red el CLI no logra conectarse (error de red/certificados desde el
+binario, no reproducible desde el navegador ni desde `npm`/PowerShell), así
+que quedó descartado como flujo de trabajo para este proyecto.
+
+Secrets del proyecto (Edge Functions → Secrets, no van en el repo):
+`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_REMITENTE_EMAIL`, y
+`SUPABASE_SECRET_KEY` — esta última es la "secret key" (`sb_secret_...`)
+del sistema nuevo de claves de Supabase (Project Settings → API Keys), que
+NO se inyecta sola con el nombre clásico `SUPABASE_SERVICE_ROLE_KEY`;
+hay que cargarla a mano y usarla explícitamente en cualquier función que
+necesite saltarse RLS (ver `ms-sync-evento-tarea`, que lee la tarea y la
+conexión de Outlook de un usuario que no es quien hizo el pedido).
 
 ## Patrón de seguridad al agregar una entidad nueva
 
