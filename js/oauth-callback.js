@@ -37,7 +37,20 @@ async function procesarCallback() {
   });
 
   if (error) {
-    volverAConfiguracion("error", "No se pudo completar la conexión con Outlook.");
+    // error.message de supabase-js suele ser genérico ("non-2xx status code");
+    // el detalle real que devolvió la función viene en error.context (la
+    // respuesta HTTP cruda), así que lo leemos a mano para mostrarlo.
+    let detalle = error.message;
+    if (error.context && typeof error.context.json === "function") {
+      try {
+        const cuerpo = await error.context.json();
+        if (cuerpo && cuerpo.error) detalle = cuerpo.error;
+      } catch (_e) {
+        // el cuerpo no era JSON (ej. función caída del todo); nos quedamos con error.message.
+      }
+    }
+    console.error("ms-oauth-exchange:", error, detalle);
+    volverAConfiguracion("error", detalle || "No se pudo completar la conexión con Outlook.");
     return;
   }
 
