@@ -114,17 +114,19 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!tarea || !tarea.responsable_id) {
-        return jsonResponse({ skipped: true });
+        return jsonResponse({ skipped: true, motivo: "sin tarea o sin responsable" });
       }
 
       const fechaInicio = tarea.fecha_inicio || tarea.fecha_termino;
       const fechaTermino = tarea.fecha_termino || tarea.fecha_inicio;
       if (!fechaInicio || !fechaTermino) {
-        return jsonResponse({ skipped: true });
+        return jsonResponse({ skipped: true, motivo: "sin fechas" });
       }
 
       const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, tarea.responsable_id);
-      if (!accessToken) return jsonResponse({ skipped: true });
+      if (!accessToken) {
+        return jsonResponse({ skipped: true, motivo: "responsable sin conexión de Outlook válida", responsable_id: tarea.responsable_id });
+      }
 
       const eventoBody = {
         subject: tarea.titulo,
