@@ -602,6 +602,14 @@ grant select, insert, update, delete on public.tareas to service_role;
 grant select, insert, update, delete on public.perfiles to service_role;
 grant select, insert, update, delete on public.ms_conexiones to service_role;
 
+-- d) Mismo motivo que (c): ms-sync-evento-tarea y ms-enviar-notificacion
+--    necesitan leer el proyecto (y su cliente) de una tarea para incluir
+--    esa info en el evento de Outlook y el email. El "alter default
+--    privileges" de arriba no alcanza acá porque solo cubre tablas creadas
+--    DESPUÉS de esa línea — proyectos y clientes son de antes.
+grant select on public.proyectos to service_role;
+grant select on public.clientes to service_role;
+
 -- Para que cualquier tabla nueva que se agregue después también quede
 -- accesible a service_role sin tener que acordarse de este paso cada vez.
 alter default privileges in schema public
