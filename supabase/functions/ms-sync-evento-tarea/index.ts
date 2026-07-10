@@ -29,6 +29,37 @@ function sumarUnDia(fecha: string) {
 }
 
 // deno-lint-ignore no-explicit-any
+async function obtenerInfoProyecto(supabaseAdmin: any, proyectoId: string | null) {
+  if (!proyectoId) return "";
+
+  const { data: proyecto } = await supabaseAdmin
+    .from("proyectos")
+    .select("nombre, descripcion, estado, fecha, cliente_id")
+    .eq("id", proyectoId)
+    .maybeSingle();
+
+  if (!proyecto) return "";
+
+  let clienteNombre = "";
+  if (proyecto.cliente_id) {
+    const { data: cliente } = await supabaseAdmin
+      .from("clientes")
+      .select("nombre")
+      .eq("id", proyecto.cliente_id)
+      .maybeSingle();
+    clienteNombre = cliente?.nombre || "";
+  }
+
+  return [
+    `\n\nProyecto: ${proyecto.nombre}`,
+    proyecto.estado ? `\nEstado del proyecto: ${proyecto.estado}` : "",
+    proyecto.fecha ? `\nFecha del proyecto: ${proyecto.fecha}` : "",
+    clienteNombre ? `\nCliente: ${clienteNombre}` : "",
+    proyecto.descripcion ? `\nDescripción del proyecto: ${proyecto.descripcion}` : "",
+  ].join("");
+}
+
+// deno-lint-ignore no-explicit-any
 async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: string) {
   const { data: conexion } = await supabaseAdmin
     .from("ms_conexiones")
@@ -116,7 +147,7 @@ Deno.serve(async (req) => {
 
       const { data: tarea, error: tareaError } = await supabaseAdmin
         .from("tareas")
-        .select("id, titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, outlook_event_id")
+        .select("id, titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, outlook_event_id, proyecto_id")
         .eq("id", tarea_id)
         .maybeSingle();
 
@@ -141,9 +172,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ skipped: true, motivo: "responsable sin conexión de Outlook válida", responsable_id: tarea.responsable_id });
       }
 
+      const infoProyecto = await obtenerInfoProyecto(supabaseAdmin, tarea.proyecto_id);
+
       const eventoBody = {
         subject: tarea.titulo,
-        body: { contentType: "text", content: tarea.descripcion || "" },
+        body: { contentType: "text", content: (tarea.descripcion || "") + infoProyecto },
         isAllDay: true,
         start: { dateTime: `${fechaInicio}T00:00:00`, timeZone: "UTC" },
         end: { dateTime: `${sumarUnDia(fechaTermino)}T00:00:00`, timeZone: "UTC" },

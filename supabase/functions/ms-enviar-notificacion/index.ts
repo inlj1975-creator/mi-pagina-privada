@@ -19,6 +19,37 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// deno-lint-ignore no-explicit-any
+async function obtenerInfoProyecto(supabaseAdmin: any, proyectoId: string | null) {
+  if (!proyectoId) return "";
+
+  const { data: proyecto } = await supabaseAdmin
+    .from("proyectos")
+    .select("nombre, descripcion, estado, fecha, cliente_id")
+    .eq("id", proyectoId)
+    .maybeSingle();
+
+  if (!proyecto) return "";
+
+  let clienteNombre = "";
+  if (proyecto.cliente_id) {
+    const { data: cliente } = await supabaseAdmin
+      .from("clientes")
+      .select("nombre")
+      .eq("id", proyecto.cliente_id)
+      .maybeSingle();
+    clienteNombre = cliente?.nombre || "";
+  }
+
+  return [
+    `\n\nProyecto: ${proyecto.nombre}`,
+    proyecto.estado ? `\nEstado del proyecto: ${proyecto.estado}` : "",
+    proyecto.fecha ? `\nFecha del proyecto: ${proyecto.fecha}` : "",
+    clienteNombre ? `\nCliente: ${clienteNombre}` : "",
+    proyecto.descripcion ? `\nDescripción del proyecto: ${proyecto.descripcion}` : "",
+  ].join("");
+}
+
 async function obtenerAccessTokenAplicacion() {
   const resp = await fetch(
     `https://login.microsoftonline.com/${Deno.env.get("MS_TENANT_ID")}/oauth2/v2.0/token`,
@@ -55,7 +86,7 @@ Deno.serve(async (req) => {
 
     const { data: tarea, error: tareaError } = await supabaseAdmin
       .from("tareas")
-      .select("titulo, descripcion, fecha_inicio, fecha_termino, responsable_id")
+      .select("titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, proyecto_id")
       .eq("id", tarea_id)
       .maybeSingle();
 
@@ -81,6 +112,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "No se pudo obtener token de aplicación de Microsoft" }, 500);
     }
 
+    const infoProyecto = await obtenerInfoProyecto(supabaseAdmin, tarea.proyecto_id);
+
     const primeraLinea =
       motivo === "fechas"
         ? `Cambiaron las fechas de tu tarea "${tarea.titulo}".`
@@ -91,6 +124,7 @@ Deno.serve(async (req) => {
       tarea.descripcion ? `\nDescripción: ${tarea.descripcion}` : "",
       tarea.fecha_inicio ? `\nInicio: ${tarea.fecha_inicio}` : "",
       tarea.fecha_termino ? `\nTérmino: ${tarea.fecha_termino}` : "",
+      infoProyecto,
     ].join("");
 
     const asunto =
