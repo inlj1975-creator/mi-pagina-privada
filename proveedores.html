@@ -46,21 +46,23 @@
       <button type="button" class="btn-secondary" id="cancel-edit-button" style="display: none;">Cancelar edición</button>
     </form>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Email</th>
-          <th>Teléfono</th>
-          <th>Rubro</th>
-          <th>Notas</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="providers-table-body">
-        <!-- Las filas se generan dinámicamente desde js/proveedores.js -->
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Rubro</th>
+            <th>Notas</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="providers-table-body">
+          <!-- Las filas se generan dinámicamente desde js/proveedores.js -->
+        </tbody>
+      </table>
+    </div>
   </main>
 
   <script src="js/nav.js"></script>

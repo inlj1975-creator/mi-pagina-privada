@@ -1,49 +1,134 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Arial, sans-serif;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.375rem;
+  --font-size-xl: 1.75rem;
+
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f4f5f7;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-500: #6b7280;
+  --color-neutral-800: #1f2937;
+
+  --color-primary-50: #eff6ff;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+
+  --color-success-600: #16a34a;
+  --color-warning-600: #b45309;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-full: 999px;
+
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.14);
+
+  --transition-fast: 120ms ease;
+
+  --bp-sm: 640px;
+  --bp-md: 768px;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, Arial, sans-serif;
-  background: #f4f5f7;
-  color: #1f2937;
+  font-family: var(--font-sans);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
 }
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.85rem 2rem;
-  background: #1f2937;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-8);
+  background: var(--color-neutral-800);
   color: white;
 }
 
 header h1 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
 button {
   cursor: pointer;
   border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-primary {
-  background: #2563eb;
+  background: var(--color-primary-600);
   color: white;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-700);
 }
 
 .btn-danger {
-  background: #dc2626;
+  background: var(--color-danger-600);
   color: white;
 }
 
+.btn-danger:hover {
+  background: var(--color-danger-700);
+}
+
 .btn-secondary {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-800);
+}
+
+.btn-secondary:hover {
+  background: var(--color-neutral-300);
 }
 
 /* Login */
@@ -52,183 +137,258 @@ button {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: var(--space-4);
 }
 
 .login-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  background: var(--color-neutral-0);
+  padding: var(--space-8);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   width: 100%;
   max-width: 320px;
 }
 
 .login-card h1 {
   margin-top: 0;
-  font-size: 1.3rem;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 
 .field {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .field label {
   display: block;
-  margin-bottom: 0.3rem;
-  font-size: 0.9rem;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-neutral-800);
 }
 
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  color: var(--color-neutral-800);
+  background: var(--color-neutral-0);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-600);
+  box-shadow: 0 0 0 3px var(--color-primary-50);
 }
 
 .error-message {
-  color: #dc2626;
-  font-size: 0.9rem;
+  color: var(--color-danger-600);
+  font-size: var(--font-size-sm);
   min-height: 1.2rem;
 }
 
-/* Proyectos */
+/* Layout general */
 main {
   max-width: 900px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: var(--space-6);
 }
 
 .project-form {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  margin-bottom: 1.5rem;
+  background: var(--color-neutral-0);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-6);
+}
+
+.project-form h2,
+.project-form h3 {
+  font-family: inherit;
+  color: var(--color-neutral-800);
+  margin-top: 0;
+}
+
+.project-form h2 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-4);
+}
+
+.project-form h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-3);
 }
 
 .project-form .row {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* Usada solo en tareas.html: fuerza 2 columnas explícitas en vez de dejar
+   que auto-fit decida, porque ahí conviene un ritmo más respirado que en
+   los formularios de 4-5 campos. */
+.project-form .row.row-2 {
+  grid-template-columns: 1fr 1fr;
 }
 
 .project-form .row .field {
-  flex: 1;
-  min-width: 160px;
+  margin-bottom: 0;
+}
+
+/* Tablas: el wrapper .table-scroll (agregado en el HTML alrededor de cada
+   <table>) es quien lleva el fondo/radio/sombra y el scroll horizontal en
+   pantallas angostas; la tabla en sí solo define su propio ancho mínimo. */
+.table-scroll {
+  overflow-x: auto;
+  background: var(--color-neutral-0);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-6);
 }
 
 table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
-  background: white;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  background: var(--color-neutral-0);
 }
 
-th, td {
+th,
+td {
   text-align: left;
-  padding: 0.7rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-neutral-200);
 }
 
 th {
-  background: #f9fafb;
-  font-size: 0.85rem;
+  background: var(--color-neutral-50);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
-  color: #6b7280;
+  letter-spacing: 0.03em;
+  color: var(--color-neutral-500);
+}
+
+tbody tr:nth-child(even) {
+  background: var(--color-neutral-50);
+}
+
+tbody tr:hover {
+  background: var(--color-primary-50);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
 td.actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
-.estado-pendiente { color: #b45309; }
-.estado-en-curso { color: #2563eb; }
-.estado-completado { color: #16a34a; }
+.estado-pendiente { color: var(--color-warning-600); }
+.estado-en-curso { color: var(--color-primary-600); }
+.estado-completado { color: var(--color-success-600); }
 
 /* Tablero de proyectos */
 .tablero-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .tablero-card {
-  background: white;
-  padding: 1.25rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  background: var(--color-neutral-0);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow var(--transition-fast);
 }
 
 .tablero-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 .tablero-card-header {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .tablero-card-header h3 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
 .tablero-vacio {
-  color: #6b7280;
-  font-size: 0.95rem;
-  padding: 2rem 0;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-base);
+  padding: var(--space-8) 0;
 }
 
 .tablero-cliente,
 .tablero-resumen {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-  color: #6b7280;
+  margin: var(--space-1) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-500);
 }
 
 .badge {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: white;
   white-space: nowrap;
 }
 
-.badge-pendiente { background: #b45309; }
-.badge-en-curso { background: #2563eb; }
-.badge-completado { background: #16a34a; }
-.badge-hecha { background: #16a34a; }
-.badge-gris { background: #6b7280; }
+.badge-pendiente { background: var(--color-warning-600); }
+.badge-en-curso { background: var(--color-primary-600); }
+.badge-completado { background: var(--color-success-600); }
+.badge-hecha { background: var(--color-success-600); }
+.badge-gris { background: var(--color-neutral-500); }
 
 /* Menú de navegación */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: var(--space-4);
 }
 
 #user-email {
-  margin-left: 1.5rem;
-  padding-left: 1.5rem;
+  margin-left: var(--space-6);
+  padding-left: var(--space-6);
   border-left: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-nav {
   display: flex;
   align-items: center;
-  gap: 1.75rem;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .main-nav > a,
@@ -237,9 +397,10 @@ td.actions {
   cursor: pointer;
   list-style: none;
   text-decoration: none;
-  padding: 0.3rem 0.65rem;
-  border-radius: 6px;
-  transition: background 0.15s;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast);
 }
 
 .main-nav > a:hover,
@@ -247,8 +408,15 @@ td.actions {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.main-nav > a:focus-visible,
+.main-nav summary:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
 .main-nav > a.nav-active {
   background: rgba(255, 255, 255, 0.22);
+  font-weight: var(--font-weight-semibold);
 }
 
 .main-nav summary::-webkit-details-marker {
@@ -257,7 +425,7 @@ td.actions {
 
 .main-nav summary::after {
   content: " ▾";
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   opacity: 0.75;
 }
 
@@ -269,11 +437,11 @@ td.actions {
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 0.5rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  padding: 0.5rem;
+  margin-top: var(--space-2);
+  background: var(--color-neutral-0);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
   min-width: 150px;
@@ -281,14 +449,16 @@ td.actions {
 }
 
 .nav-dropdown-menu a {
-  color: #1f2937;
-  padding: 0.4rem 0.6rem;
+  color: var(--color-neutral-800);
+  padding: var(--space-2) var(--space-3);
   border-radius: 4px;
   white-space: nowrap;
+  text-decoration: none;
+  font-size: var(--font-size-sm);
 }
 
 .nav-dropdown-menu a:hover {
-  background: #f4f5f7;
+  background: var(--color-neutral-100);
 }
 
 /* Calendario */
@@ -300,108 +470,158 @@ main.calendario-main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 1.25rem;
-  background: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
+  background: var(--color-neutral-0);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .calendario-btn-nav {
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: none;
-  background: #f4f5f7;
-  color: #1f2937;
-  font-size: 1.1rem;
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+  font-size: var(--font-size-md);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
   flex-shrink: 0;
 }
 
 .calendario-btn-nav:hover {
-  background: #e5e7eb;
+  background: var(--color-neutral-200);
 }
 
 .calendario-mes-label {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
   min-width: 210px;
   text-align: center;
-  color: #1f2937;
+  color: var(--color-neutral-800);
 }
 
 .calendario-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  background: #f4f5f7;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  padding: 12px;
+  background: var(--color-neutral-100);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-3);
 }
 
 .calendario-cabecera {
   text-align: center;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #6b7280;
-  padding: 0.5rem 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-neutral-500);
+  padding: var(--space-2) 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .calendario-dia {
-  background: white;
-  border-radius: 8px;
-  padding: 0.6rem;
+  background: var(--color-neutral-0);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
   min-height: 110px;
-  transition: background 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .calendario-dia:not(.fuera-del-mes):hover {
-  background: #eff6ff;
+  background: var(--color-primary-50);
 }
 
 .calendario-dia.fuera-del-mes {
-  background: #ebedf0;
+  background: var(--color-neutral-200);
   opacity: 0.5;
 }
 
 .calendario-dia.calendar-weekend {
-  background: #f8fafc;
+  background: var(--color-neutral-50);
 }
 
 .calendario-dia-numero {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 0.4rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-neutral-500);
+  margin-bottom: var(--space-2);
   line-height: 1.6rem;
   width: 1.6rem;
   text-align: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .calendario-dia-numero.hoy {
-  background: #2563eb;
+  background: var(--color-primary-600);
   color: white;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .calendario-tarea {
   display: block;
   font-size: 0.72rem;
-  padding: 0.2rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: 4px;
   color: white;
-  margin-bottom: 0.2rem;
+  margin-bottom: var(--space-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Responsive: el header no usa scroll horizontal porque .nav-dropdown-menu
+   es position:absolute — un contenedor con overflow-x lo recortaría. En
+   vez de eso, header y .header-right pasan a envolver en varias líneas. */
+@media (max-width: 768px) {
+  header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .tablero-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: var(--space-4);
+  }
+
+  .project-form .row,
+  .project-form .row.row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .tablero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #user-email {
+    max-width: 140px;
+  }
+
+  .calendario-controles {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .calendario-mes-label {
+    font-size: var(--font-size-md);
+    min-width: auto;
+  }
+
+  main.calendario-main {
+    overflow-x: auto;
+  }
+
+  .calendario-grid {
+    min-width: 560px;
+  }
 }

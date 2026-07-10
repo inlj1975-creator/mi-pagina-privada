@@ -19,16 +19,10 @@
   <main>
     <form id="task-form" class="project-form">
       <input type="hidden" id="task-id" />
-      <div class="row">
+      <div class="row row-2">
         <div class="field">
           <label for="titulo">Título</label>
           <input type="text" id="titulo" required />
-        </div>
-        <div class="field">
-          <label for="proyecto">Proyecto</label>
-          <select id="proyecto">
-            <option value="">(sin proyecto)</option>
-          </select>
         </div>
         <div class="field">
           <label for="estado">Estado</label>
@@ -39,13 +33,21 @@
           </select>
         </div>
       </div>
-      <div class="row">
+      <div class="row row-2">
+        <div class="field">
+          <label for="proyecto">Proyecto</label>
+          <select id="proyecto">
+            <option value="">(sin proyecto)</option>
+          </select>
+        </div>
         <div class="field">
           <label for="responsable_id">Responsable</label>
           <select id="responsable_id">
             <option value="">(sin responsable)</option>
           </select>
         </div>
+      </div>
+      <div class="row row-2">
         <div class="field">
           <label for="fecha_inicio">Fecha de inicio</label>
           <input type="date" id="fecha_inicio" />
@@ -64,22 +66,24 @@
       <button type="button" class="btn-secondary" id="cancel-edit-button" style="display: none;">Cancelar edición</button>
     </form>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Título</th>
-          <th>Proyecto</th>
-          <th>Responsable</th>
-          <th>Estado</th>
-          <th>Inicio</th>
-          <th>Término</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="tasks-table-body">
-        <!-- Las filas se generan dinámicamente desde js/tareas.js -->
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Proyecto</th>
+            <th>Responsable</th>
+            <th>Estado</th>
+            <th>Inicio</th>
+            <th>Término</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tasks-table-body">
+          <!-- Las filas se generan dinámicamente desde js/tareas.js -->
+        </tbody>
+      </table>
+    </div>
   </main>
 
   <script src="js/nav.js"></script>
