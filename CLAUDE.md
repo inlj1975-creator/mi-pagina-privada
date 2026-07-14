@@ -213,15 +213,32 @@ binario, no reproducible desde el navegador ni desde `npm`/PowerShell), así
 que quedó descartado como flujo de trabajo para este proyecto.
 
 Secrets del proyecto (Edge Functions → Secrets, no van en el repo):
-`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_REMITENTE_EMAIL`, y
-`PROJECT_SECRET_KEY` — esta última es la "secret key" (`sb_secret_...`)
-del sistema nuevo de claves de Supabase (Project Settings → API Keys), que
-NO se inyecta sola con el nombre clásico `SUPABASE_SERVICE_ROLE_KEY`, y que
-tampoco se puede guardar como secreto con un nombre que empiece con
-`SUPABASE_` (prefijo reservado por la plataforma) — por eso el nombre
-`PROJECT_SECRET_KEY`. Hay que usarla explícitamente en cualquier función
-que necesite saltarse RLS (ver `ms-sync-evento-tarea`, que lee la tarea y
-la conexión de Outlook de un usuario que no es quien hizo el pedido).
+`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_REMITENTE_EMAIL`,
+`PROJECT_SECRET_KEY` y `MS_TOKEN_ENCRYPTION_KEY`. `PROJECT_SECRET_KEY` es
+la "secret key" (`sb_secret_...`) del sistema nuevo de claves de Supabase
+(Project Settings → API Keys), que NO se inyecta sola con el nombre
+clásico `SUPABASE_SERVICE_ROLE_KEY`, y que tampoco se puede guardar como
+secreto con un nombre que empiece con `SUPABASE_` (prefijo reservado por
+la plataforma) — por eso el nombre `PROJECT_SECRET_KEY`. Hay que usarla
+explícitamente en cualquier función que necesite saltarse RLS (ver
+`ms-sync-evento-tarea`, que lee la tarea y la conexión de Outlook de un
+usuario que no es quien hizo el pedido).
+
+Desde julio 2026, `ms_access_token`/`ms_refresh_token` se guardan
+**cifrados** (AES-GCM, Web Crypto nativo de Deno, sin librerías externas)
+en vez de en texto plano — así, tener `PROJECT_SECRET_KEY` (que bypassea
+RLS) ya no alcanza para leer el token de alguien, hace falta además
+`MS_TOKEN_ENCRYPTION_KEY`. El cifrado/descifrado está duplicado en
+`ms-oauth-exchange` (cifra al guardar) y `ms-sync-evento-tarea` (descifra
+al leer, vuelve a cifrar al refrescar) — mismo patrón que
+`obtenerInfoProyecto`, ya duplicada entre dos funciones. Importante,
+porque es distinto a rotar los otros secrets: rotar o perder
+`MS_TOKEN_ENCRYPTION_KEY` invalida **para siempre** todas las conexiones
+ya guardadas (nadie puede recuperar su token cifrado con la clave vieja),
+obligando a que todos reconecten su Outlook — por eso este secret no se
+rota "por las dudas" como los demás, solo si se sabe que se filtró, y
+conviene tener una copia guardada en un lugar seguro (Supabase no permite
+volver a ver el valor de un secret ya guardado).
 
 ## Patrón de seguridad al agregar una entidad nueva
 

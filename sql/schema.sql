@@ -546,6 +546,19 @@ create policy "Admin, director o gerente pueden borrar tareas"
 --    es visible/editable solo por su propio dueño (auth.uid()). Las Edge
 --    Functions leen/escriben filas ajenas usando la service role key, que
 --    en Supabase evita RLS por diseño, sin necesitar una política aparte.
+--
+-- Nota (2026-07): ms_access_token/ms_refresh_token viajan cifrados
+-- (AES-GCM) desde la aplicación antes de llegar acá — la columna sigue
+-- siendo "text" sin cambios de tipo, pero el contenido ya no es el token
+-- en texto plano, sino base64(IV || ciphertext). El cifrado/descifrado
+-- vive en las Edge Functions (ms-oauth-exchange, ms-sync-evento-tarea),
+-- nunca en SQL, para que la clave de cifrado (secret
+-- MS_TOKEN_ENCRYPTION_KEY) nunca tenga que pasar por la base. Motivo: RLS
+-- protege esta tabla de OTROS usuarios de la app, pero no de alguien con
+-- la secret key (PROJECT_SECRET_KEY) — el cifrado sube esa barra. Filas
+-- guardadas antes de este cambio quedan en texto plano hasta que su
+-- dueño reconecte su Outlook (el intento de descifrarlas falla y se
+-- tratan como "sin conexión", nunca como error).
 create table if not exists ms_conexiones (
   user_id uuid primary key references auth.users(id) on delete cascade,
   ms_access_token text not null,
