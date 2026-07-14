@@ -22,6 +22,36 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// --- Cifrado de tokens de Microsoft (AES-GCM) ---
+// Si alguien obtiene la secret key de Supabase (bypassea RLS), no alcanza
+// para leer el token: también necesitaría "MS_TOKEN_ENCRYPTION_KEY", que
+// solo vive como Edge Function secret, nunca en la base ni en el repo.
+async function obtenerClaveCifrado(): Promise<CryptoKey> {
+  const claveBase64 = Deno.env.get("MS_TOKEN_ENCRYPTION_KEY")!;
+  const claveBytes = Uint8Array.from(atob(claveBase64), (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey("raw", claveBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encriptarToken(texto: string): Promise<string> {
+  const clave = await obtenerClaveCifrado();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const datos = new TextEncoder().encode(texto);
+  const cifrado = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, clave, datos);
+  const combinado = new Uint8Array(iv.length + cifrado.byteLength);
+  combinado.set(iv, 0);
+  combinado.set(new Uint8Array(cifrado), iv.length);
+  return btoa(String.fromCharCode(...combinado));
+}
+
+async function desencriptarToken(textoCifrado: string): Promise<string> {
+  const clave = await obtenerClaveCifrado();
+  const combinado = Uint8Array.from(atob(textoCifrado), (c) => c.charCodeAt(0));
+  const iv = combinado.slice(0, 12);
+  const cifrado = combinado.slice(12);
+  const datos = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, clave, cifrado);
+  return new TextDecoder().decode(datos);
+}
+
 function sumarUnDia(fecha: string) {
   const d = new Date(`${fecha}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
@@ -69,8 +99,20 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
 
   if (!conexion) return null;
 
+  let accessTokenActual: string;
+  let refreshTokenActual: string;
+  try {
+    accessTokenActual = await desencriptarToken(conexion.ms_access_token);
+    refreshTokenActual = await desencriptarToken(conexion.ms_refresh_token);
+  } catch {
+    // Fila de antes de cifrar (texto plano) o dato corrupto: no hay forma
+    // de recuperar el token real. Se trata igual que "sin conexión" — el
+    // responsable tiene que reconectar su Outlook desde "Mi cuenta".
+    return null;
+  }
+
   const vencePronto = new Date(conexion.ms_token_expires_at).getTime() < Date.now() + 60_000;
-  if (!vencePronto) return conexion.ms_access_token;
+  if (!vencePronto) return accessTokenActual;
 
   const resp = await fetch(
     `https://login.microsoftonline.com/${Deno.env.get("MS_TENANT_ID")}/oauth2/v2.0/token`,
@@ -81,7 +123,7 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
         client_id: Deno.env.get("MS_CLIENT_ID")!,
         client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
         grant_type: "refresh_token",
-        refresh_token: conexion.ms_refresh_token,
+        refresh_token: refreshTokenActual,
         scope: "offline_access Calendars.ReadWrite",
       }),
     }
@@ -93,8 +135,8 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
   await supabaseAdmin
     .from("ms_conexiones")
     .update({
-      ms_access_token: tokenData.access_token,
-      ms_refresh_token: tokenData.refresh_token || conexion.ms_refresh_token,
+      ms_access_token: await encriptarToken(tokenData.access_token),
+      ms_refresh_token: await encriptarToken(tokenData.refresh_token || refreshTokenActual),
       ms_token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     })

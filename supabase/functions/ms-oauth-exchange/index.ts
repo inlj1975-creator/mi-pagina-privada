@@ -22,6 +22,27 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// --- Cifrado de tokens de Microsoft (AES-GCM) ---
+// Si alguien obtiene la secret key de Supabase (bypassea RLS), no alcanza
+// para leer el token: también necesitaría "MS_TOKEN_ENCRYPTION_KEY", que
+// solo vive como Edge Function secret, nunca en la base ni en el repo.
+async function obtenerClaveCifrado(): Promise<CryptoKey> {
+  const claveBase64 = Deno.env.get("MS_TOKEN_ENCRYPTION_KEY")!;
+  const claveBytes = Uint8Array.from(atob(claveBase64), (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey("raw", claveBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encriptarToken(texto: string): Promise<string> {
+  const clave = await obtenerClaveCifrado();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const datos = new TextEncoder().encode(texto);
+  const cifrado = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, clave, datos);
+  const combinado = new Uint8Array(iv.length + cifrado.byteLength);
+  combinado.set(iv, 0);
+  combinado.set(new Uint8Array(cifrado), iv.length);
+  return btoa(String.fromCharCode(...combinado));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -78,8 +99,8 @@ Deno.serve(async (req) => {
 
     const { error: upsertError } = await supabase.from("ms_conexiones").upsert({
       user_id: user.id,
-      ms_access_token: tokenData.access_token,
-      ms_refresh_token: tokenData.refresh_token,
+      ms_access_token: await encriptarToken(tokenData.access_token),
+      ms_refresh_token: await encriptarToken(tokenData.refresh_token),
       ms_token_expires_at: msTokenExpiresAt,
       ms_scope: tokenData.scope,
       updated_at: new Date().toISOString(),
