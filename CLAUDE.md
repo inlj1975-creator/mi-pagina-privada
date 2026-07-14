@@ -253,5 +253,16 @@ volver a ver el valor de un secret ya guardado).
 
 ## Próximos pasos pendientes
 
-- (ninguno pendiente por ahora — integración con Outlook completa: sync de
-  calendario y email de notificación funcionando)
+- **"Dejar de ser solo una app de práctica"** (seguridad/madurez del
+  proyecto): ya se hicieron la rotación de secrets expuestos y el
+  cifrado de tokens de Outlook (ver sección de Outlook). Quedan:
+  - Armar un ambiente de staging (rama/proyecto de prueba separado de
+    producción) — hoy cada push a `main` llega directo a producción.
+  - Conversación con la empresa sobre privacidad de datos reales (hoy
+    `CLAUDE.md` asume "datos inventados"; si se usa con datos reales de
+    empleados, hay que revisar consentimiento e implicancias de manejar
+    su calendario/email vía Microsoft Graph).
+- La conexión de Outlook creada el 2026-07-07 (antes de cifrar los
+  tokens) sigue en texto plano — no rompe nada (se trata como "sin
+  conexión válida"), pero esa persona debería reconectar desde "Mi
+  cuenta" cuando pueda.
