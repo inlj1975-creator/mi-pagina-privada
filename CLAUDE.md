@@ -249,7 +249,8 @@ cambios antes de que sean visibles en el sitio real, existe una rama
 
 - **Hosting**: `main` se sigue sirviendo desde GitHub Pages, sin ningún
   cambio. La rama `staging` se sirve desde **Cloudflare Pages**
-  (`https://<slug>.pages.dev`), conectado por git al mismo repo. Se eligió
+  (`https://mi-pagina-privada.pages.dev`), conectado por git al mismo repo.
+  Se eligió
   Cloudflare Pages y no un segundo repo con su propio GitHub Pages porque
   GitHub Pages solo puede servir una rama por repo — Cloudflare Pages
   soporta deploy nativo por rama (sin build, sin CLI), así que el flujo
@@ -267,7 +268,7 @@ cambios antes de que sean visibles en el sitio real, existe una rama
   prueba y sus filas en `perfiles` se crean a mano, igual que en prod.
 - **Microsoft**: se reusa el mismo app registration de Azure ("Melirrepu")
   que usa prod, con un segundo redirect URI agregado
-  (`https://<slug>.pages.dev/oauth-callback.html`) — evita tener que
+  (`https://mi-pagina-privada.pages.dev/oauth-callback.html`) — evita tener que
   volver a pedir el admin consent de `Mail.Send`, que ya está otorgado
   sobre ese app. `MS_CLIENT_ID`/`MS_TENANT_ID` quedan iguales en ambas
   ramas por eso mismo.
@@ -305,12 +306,11 @@ Cloudflare Pages) y, cuando está conforme, se promueve con
 
 - **"Dejar de ser solo una app de práctica"** (seguridad/madurez del
   proyecto): ya se hicieron la rotación de secrets expuestos, el
-  cifrado de tokens de Outlook (ver sección de Outlook) y el diseño del
-  ambiente de staging (ver sección "Ambiente de staging"). Queda
-  pendiente la parte manual fuera del repo: crear la cuenta/proyecto de
-  Cloudflare Pages, el proyecto Supabase de staging y el redirect URI en
-  Azure — la rama `staging` y `js/config.js` con los valores reales de
-  staging se completan recién cuando esos tres existan.
+  cifrado de tokens de Outlook (ver sección de Outlook) y el ambiente de
+  staging (ver sección "Ambiente de staging" — rama `staging`, proyecto
+  Supabase separado, Cloudflare Pages en `mi-pagina-privada.pages.dev` y
+  redirect URI de Azure, todo ya creado y verificado: datos aislados de
+  producción). Queda:
   - Conversación con la empresa sobre privacidad de datos reales (hoy
     `CLAUDE.md` asume "datos inventados"; si se usa con datos reales de
     empleados, hay que revisar consentimiento e implicancias de manejar
