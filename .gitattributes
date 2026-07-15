@@ -1,0 +1,6 @@
+# js/config.js tiene valores distintos a propósito en main (producción) y
+# en staging (ver CLAUDE.md, sección "Ambiente de staging"). Este merge
+# driver hace que cualquier merge entre esas ramas conserve el config.js de
+# la rama en la que estás parada, en vez de traer el de la otra rama.
+# Requiere, una vez por clon/máquina: git config merge.ours.driver true
+js/config.js merge=ours

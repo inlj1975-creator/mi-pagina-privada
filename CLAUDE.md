@@ -240,6 +240,56 @@ rota "por las dudas" como los demás, solo si se sabe que se filtró, y
 conviene tener una copia guardada en un lugar seguro (Supabase no permite
 volver a ver el valor de un secret ya guardado).
 
+## Ambiente de staging
+
+Hasta acá cada push a `main` llegaba directo a producción (GitHub Pages
+sirve `main` sin ningún paso intermedio, no hay CI/CD). Para poder probar
+cambios antes de que sean visibles en el sitio real, existe una rama
+`staging`, separada de `main` en tres capas:
+
+- **Hosting**: `main` se sigue sirviendo desde GitHub Pages, sin ningún
+  cambio. La rama `staging` se sirve desde **Cloudflare Pages**
+  (`https://<slug>.pages.dev`), conectado por git al mismo repo. Se eligió
+  Cloudflare Pages y no un segundo repo con su propio GitHub Pages porque
+  GitHub Pages solo puede servir una rama por repo — Cloudflare Pages
+  soporta deploy nativo por rama (sin build, sin CLI), así que el flujo
+  queda igual de simple que hoy: `git push` a la rama correspondiente y el
+  sitio se actualiza solo.
+- **Backend**: staging tiene su **propio proyecto Supabase** (free tier),
+  con el mismo `sql/schema.sql` corrido una sola vez y las mismas 3 Edge
+  Functions pegadas a mano (ninguna tiene una URL de prod hardcodeada,
+  usan `Deno.env.get("SUPABASE_URL")`, así que el código es idéntico). Los
+  secrets se configuran con los mismos nombres que en prod, salvo
+  `PROJECT_SECRET_KEY` (la secret key propia de ese proyecto) y
+  `MS_TOKEN_ENCRYPTION_KEY` (una clave nueva, generada aparte — **nunca**
+  la misma que prod, mismo motivo que en la sección de Outlook: perderla
+  invalida para siempre las conexiones cifradas con ella). Usuarios de
+  prueba y sus filas en `perfiles` se crean a mano, igual que en prod.
+- **Microsoft**: se reusa el mismo app registration de Azure ("Melirrepu")
+  que usa prod, con un segundo redirect URI agregado
+  (`https://<slug>.pages.dev/oauth-callback.html`) — evita tener que
+  volver a pedir el admin consent de `Mail.Send`, que ya está otorgado
+  sobre ese app. `MS_CLIENT_ID`/`MS_TENANT_ID` quedan iguales en ambas
+  ramas por eso mismo.
+
+`js/config.js` diverge a propósito entre `main` y `staging` (Supabase y
+`MS_REDIRECT_URI` distintos en cada rama) — es el único archivo del repo
+donde eso pasa. Para que un merge en cualquier dirección no lo pise por
+accidente, `.gitattributes` marca ese archivo con `merge=ours`. Esto
+requiere, **una sola vez por clon/máquina**:
+```
+git config merge.ours.driver true
+```
+Como red de seguridad extra (por si en algún clon falta ese paso), después
+de cualquier merge entre `main` y `staging` conviene confirmar a ojo que
+`js/config.js` sigue apuntando al Supabase correcto (prod termina en
+`zurfciuqrsnlcafdatzf`).
+
+Flujo de trabajo: se prueba en `staging` (viendo los cambios en la URL de
+Cloudflare Pages) y, cuando está conforme, se promueve con
+`git checkout main && git merge staging` seguido del chequeo de
+`config.js` de arriba y `git push origin main`.
+
 ## Patrón de seguridad al agregar una entidad nueva
 
 1. `create table <entidad> (...)`
@@ -254,10 +304,13 @@ volver a ver el valor de un secret ya guardado).
 ## Próximos pasos pendientes
 
 - **"Dejar de ser solo una app de práctica"** (seguridad/madurez del
-  proyecto): ya se hicieron la rotación de secrets expuestos y el
-  cifrado de tokens de Outlook (ver sección de Outlook). Quedan:
-  - Armar un ambiente de staging (rama/proyecto de prueba separado de
-    producción) — hoy cada push a `main` llega directo a producción.
+  proyecto): ya se hicieron la rotación de secrets expuestos, el
+  cifrado de tokens de Outlook (ver sección de Outlook) y el diseño del
+  ambiente de staging (ver sección "Ambiente de staging"). Queda
+  pendiente la parte manual fuera del repo: crear la cuenta/proyecto de
+  Cloudflare Pages, el proyecto Supabase de staging y el redirect URI en
+  Azure — la rama `staging` y `js/config.js` con los valores reales de
+  staging se completan recién cuando esos tres existan.
   - Conversación con la empresa sobre privacidad de datos reales (hoy
     `CLAUDE.md` asume "datos inventados"; si se usa con datos reales de
     empleados, hay que revisar consentimiento e implicancias de manejar
