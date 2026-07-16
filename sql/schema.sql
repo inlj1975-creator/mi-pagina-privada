@@ -627,3 +627,36 @@ grant select on public.clientes to service_role;
 -- accesible a service_role sin tener que acordarse de este paso cada vez.
 alter default privileges in schema public
   grant select, insert, update, delete on tables to service_role;
+
+-- 22) Autocompletar perfiles al crear un usuario nuevo.
+--
+-- Antes, dar de alta un usuario eran dos pasos manuales separados
+-- (crearlo en Authentication, después insertar a mano su fila en
+-- perfiles) y nada garantizaba que el segundo paso se hiciera ni que el
+-- email quedara bien cargado — un email vacío en perfiles rompe en
+-- silencio cualquier flujo que dependa de él (ej. el aviso por mail de
+-- Outlook). Este trigger crea la fila de perfiles automáticamente apenas
+-- se crea el usuario en auth.users, con el email ya completo y rol en su
+-- valor por defecto ('empleado'). Seguir sin abrir alta pública: el
+-- usuario en Authentication lo sigue creando un admin a mano desde el
+-- panel, esto solo automatiza el paso de después. Cambiar el rol a algo
+-- distinto de 'empleado' sigue siendo manual (Table Editor -> perfiles).
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.perfiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
