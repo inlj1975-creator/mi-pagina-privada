@@ -177,16 +177,50 @@ function renderEquipos(lineas, equiposPorId, proveedoresPorId, perfilesPorId) {
     const cantidadCell = document.createElement("td");
     cantidadCell.textContent = linea.cantidad ?? "";
 
+    const plazoEntregaCell = document.createElement("td");
+    plazoEntregaCell.textContent = linea.plazo_entrega_dias ?? "";
+
     const proveedorCell = document.createElement("td");
     proveedorCell.textContent = proveedoresPorId.get(linea.proveedor_id) || "";
 
     const fechaInstalacionCell = document.createElement("td");
     fechaInstalacionCell.textContent = linea.fecha_instalacion || "";
 
+    const duracionInstalacionCell = document.createElement("td");
+    duracionInstalacionCell.textContent = linea.duracion_instalacion || "";
+
     const responsableCell = document.createElement("td");
     responsableCell.textContent = perfilesPorId.get(linea.responsable_instalacion_id) || "";
 
-    row.append(equipoCell, cantidadCell, proveedorCell, fechaInstalacionCell, responsableCell);
+    const fechaComisionamientoCell = document.createElement("td");
+    fechaComisionamientoCell.textContent = linea.fecha_comisionamiento || "";
+
+    const fechaPruebasCell = document.createElement("td");
+    fechaPruebasCell.textContent = linea.fecha_pruebas || "";
+
+    const fechaPuestaServicioCell = document.createElement("td");
+    fechaPuestaServicioCell.textContent = linea.fecha_puesta_servicio || "";
+
+    const criterioAceptacionCell = document.createElement("td");
+    criterioAceptacionCell.textContent = linea.criterio_aceptacion || "";
+
+    const inicioGarantiaCell = document.createElement("td");
+    inicioGarantiaCell.textContent = linea.inicio_garantia || "";
+
+    row.append(
+      equipoCell,
+      cantidadCell,
+      plazoEntregaCell,
+      proveedorCell,
+      fechaInstalacionCell,
+      duracionInstalacionCell,
+      responsableCell,
+      fechaComisionamientoCell,
+      fechaPruebasCell,
+      fechaPuestaServicioCell,
+      criterioAceptacionCell,
+      inicioGarantiaCell
+    );
     equiposTbody.appendChild(row);
   }
 }
@@ -198,7 +232,7 @@ async function loadEquipoDetalle(ofertaId) {
   const [{ data: lineas, error }, { data: equipos }, { data: proveedores }, { data: perfiles }] = await Promise.all([
     window.supabaseClient
       .from("detalle_ofertas")
-      .select("equipo_id, cantidad, proveedor_id, fecha_instalacion, responsable_instalacion_id")
+      .select("*")
       .eq("oferta_id", ofertaId),
     window.supabaseClient.from("equipos").select("id, tipo, marca, modelo"),
     window.supabaseClient.from("proveedores").select("id, nombre"),
