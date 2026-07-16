@@ -24,6 +24,16 @@ const facturasTabla = document.getElementById("facturas-tabla");
 const facturasTbody = document.getElementById("facturas-tbody");
 const sinFacturas = document.getElementById("sin-facturas");
 
+const equiposSection = document.getElementById("equipos-section");
+const equiposTabla = document.getElementById("equipos-tabla");
+const equiposTbody = document.getElementById("equipos-tbody");
+const sinEquipos = document.getElementById("sin-equipos");
+
+function formatEquipoLabel(equipo) {
+  if (!equipo) return "(sin equipo)";
+  return [equipo.tipo, equipo.marca, equipo.modelo].filter(Boolean).join(" — ");
+}
+
 async function ensureSession() {
   const { data } = await window.supabaseClient.auth.getSession();
   return data.session;
@@ -149,6 +159,61 @@ async function loadFacturas(proyectoId) {
   renderFacturas(data);
 }
 
+function renderEquipos(lineas, equiposPorId, proveedoresPorId, perfilesPorId) {
+  if (lineas.length === 0) {
+    equiposTabla.style.display = "none";
+    sinEquipos.style.display = "block";
+    return;
+  }
+
+  equiposTbody.innerHTML = "";
+
+  for (const linea of lineas) {
+    const row = document.createElement("tr");
+
+    const equipoCell = document.createElement("td");
+    equipoCell.textContent = equiposPorId.get(linea.equipo_id) || "(sin equipo)";
+
+    const cantidadCell = document.createElement("td");
+    cantidadCell.textContent = linea.cantidad ?? "";
+
+    const proveedorCell = document.createElement("td");
+    proveedorCell.textContent = proveedoresPorId.get(linea.proveedor_id) || "";
+
+    const fechaInstalacionCell = document.createElement("td");
+    fechaInstalacionCell.textContent = linea.fecha_instalacion || "";
+
+    const responsableCell = document.createElement("td");
+    responsableCell.textContent = perfilesPorId.get(linea.responsable_instalacion_id) || "";
+
+    row.append(equipoCell, cantidadCell, proveedorCell, fechaInstalacionCell, responsableCell);
+    equiposTbody.appendChild(row);
+  }
+}
+
+async function loadEquipoDetalle(ofertaId) {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const [{ data: lineas, error }, { data: equipos }, { data: proveedores }, { data: perfiles }] = await Promise.all([
+    window.supabaseClient
+      .from("detalle_ofertas")
+      .select("equipo_id, cantidad, proveedor_id, fecha_instalacion, responsable_instalacion_id")
+      .eq("oferta_id", ofertaId),
+    window.supabaseClient.from("equipos").select("id, tipo, marca, modelo"),
+    window.supabaseClient.from("proveedores").select("id, nombre"),
+    window.supabaseClient.from("perfiles").select("id, email"),
+  ]);
+
+  if (error || !lineas) return;
+
+  const equiposPorId = new Map((equipos || []).map((e) => [e.id, formatEquipoLabel(e)]));
+  const proveedoresPorId = new Map((proveedores || []).map((p) => [p.id, p.nombre]));
+  const perfilesPorId = new Map((perfiles || []).map((p) => [p.id, p.email]));
+
+  renderEquipos(lineas, equiposPorId, proveedoresPorId, perfilesPorId);
+}
+
 async function init() {
   await window.authReady;
 
@@ -196,6 +261,11 @@ async function init() {
 
   await loadTareas(proyecto.id);
   await loadFacturas(proyecto.id);
+
+  if (proyecto.oferta_id) {
+    equiposSection.style.display = "";
+    await loadEquipoDetalle(proyecto.oferta_id);
+  }
 }
 
 init();

@@ -174,6 +174,11 @@ sin proyecto todavía; la protección real es la función, no el botón.
   La columna Responsable de tareas usa la misma lógica que `js/tareas.js`:
   busca en `perfiles` por `responsable_id`; si no hay, muestra
   `responsable_nombre` con marca de legacy; si no hay ninguno, queda vacío.
+  Si el proyecto tiene `oferta_id` (nació de una oferta), se agrega una
+  sección "Detalle de equipos" con las líneas de `detalle_ofertas` de esa
+  oferta de origen (mismo patrón de solo lectura que tareas/facturas); si
+  no tiene `oferta_id` (la mayoría), la sección queda oculta en vez de
+  mostrar una tabla vacía.
 - `proyectos-tablero.html` / `js/proyectos-tablero.js` — tablero visual:
   todos los proyectos como tarjetas en una grilla responsive. Cada tarjeta
   muestra nombre, estado (badge de color), cliente y un resumen "N tareas ·
