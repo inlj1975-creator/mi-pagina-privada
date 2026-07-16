@@ -90,6 +90,21 @@ protección real.
 **Nota:** cada usuario nuevo necesita su propia fila en `perfiles` (si no la
 tiene, se trata como no-admin por defecto).
 
+Desde julio 2026, esa fila se crea **sola**: un trigger
+(`sql/schema.sql`, sección 22) sobre `auth.users` inserta automáticamente
+la fila en `perfiles` (con `email` ya completo y `rol` en su valor por
+defecto `'empleado'`) apenas se crea el usuario en Authentication. Antes
+era un segundo paso manual (Table Editor → insertar fila), y nada
+garantizaba que se hiciera ni que el email quedara bien cargado — un
+`email` vacío en `perfiles` rompe en silencio cualquier flujo que
+dependa de él (pasó armando el ambiente de staging: un perfil de prueba
+sin email hizo fallar el aviso de Outlook de forma difícil de
+diagnosticar). El alta del usuario en sí sigue siendo 100% manual desde
+el panel de Supabase — el trigger no abre ningún registro público, solo
+automatiza la fila de `perfiles` que sigue a esa alta. Asignar un rol
+distinto de `'empleado'` sigue siendo manual, editando la fila que ya
+existe.
+
 ## Aprobaciones de Ofertas
 
 `ofertas.nivel_aprobacion` es una columna **generada** (calculada sola
