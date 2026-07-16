@@ -39,12 +39,30 @@ Postgres + RLS. En el navegador solo se usa la **publishable key**
 - **Proyectos**: nombre, descripción, estado, fecha, cliente (opcional).
 - **Clientes**: nombre, email, teléfono, empresa, notas.
 - **Proveedores**: nombre, email, teléfono, rubro, notas. Mismo modelo que Clientes.
-- **Ofertas**: título, monto (`numeric(12,2)`), cliente (opcional), estado, fecha.
+- **Ofertas**: título, monto (`numeric(12,2)`), cliente (opcional), estado,
+  fecha, responsable_id y aprobador_id (FK → perfiles, on delete set null,
+  ambos solo informativos: no disparan mail ni cambian quién puede aprobar
+  — eso lo sigue decidiendo `puede_aprobar_oferta()` por monto).
 - **Facturas**: número, monto (`numeric(12,2)`), proyecto (opcional), estado, fecha.
 - **Tareas**: título, descripción, proyecto (opcional), responsable_id (FK →
   perfiles, on delete set null), estado, fecha_inicio, fecha_termino. Las
   columnas responsable_nombre / responsable_email se conservan como respaldo
   histórico; el flujo principal es responsable_id.
+- **Equipos**: tipo, marca, modelo. Catálogo reutilizable (mismo modelo que
+  Clientes/Proveedores); se elige desde el Detalle de una Oferta, y si no
+  existe el que hace falta, se crea ahí mismo con una opción "+ Crear
+  equipo nuevo" en el propio selector.
+- **Detalle de Ofertas** (`detalle_ofertas`): una línea por equipo instalado
+  en una oferta puntual — oferta_id (FK → ofertas, **on delete cascade**,
+  a diferencia del resto del proyecto: una línea de detalle no tiene
+  sentido sin su oferta), equipo_id (FK → equipos, on delete set null),
+  cantidad, plazo_entrega_dias, proveedor_id (FK → proveedores, on delete
+  set null), fecha_instalacion, duracion_instalacion, responsable_instalacion_id
+  (FK → perfiles, on delete set null), fecha_comisionamiento, fecha_pruebas,
+  fecha_puesta_servicio, criterio_aceptacion, inicio_garantia. Se gestiona
+  desde `ofertas.html`, en una sección que solo aparece editando una oferta
+  ya guardada; alcance acotado a agregar y borrar líneas, sin edición
+  in-place.
 
 Relación: un proyecto, una oferta o una tarea pertenecen a lo más a un
 cliente/proyecto (`cliente_id`/`proyecto_id`, clave foránea con `on delete
@@ -56,7 +74,7 @@ igual. El `estado` de Ofertas tiene un `check` que solo permite
 `'Hecha'`. Tareas además tiene un `check (fecha_termino >= fecha_inicio)`
 (NULL en cualquiera de las dos no rompe la validación).
 
-Las seis con **lista compartida**: cualquier usuario autenticado ve, crea
+Las ocho con **lista compartida**: cualquier usuario autenticado ve, crea
 y edita cualquier fila (no hay filtro por dueño/usuario). **Borrar es para
 admin, director_comercial y gerente_general** (ver sección Roles).
 

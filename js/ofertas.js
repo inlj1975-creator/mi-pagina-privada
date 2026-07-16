@@ -12,10 +12,46 @@ const montoInput = document.getElementById("monto");
 const clienteInput = document.getElementById("cliente");
 const estadoInput = document.getElementById("estado");
 const fechaInput = document.getElementById("fecha");
+const responsableInput = document.getElementById("responsable");
+const aprobadorInput = document.getElementById("aprobador");
+
+const detalleSection = document.getElementById("detalle-section");
+const detalleTableBody = document.getElementById("detalle-table-body");
+const detalleForm = document.getElementById("detalle-form");
+const detalleFormError = document.getElementById("detalle-form-error");
+const detalleEquipoInput = document.getElementById("detalle-equipo");
+const detalleEquipoTipoField = document.getElementById("detalle-equipo-tipo-field");
+const detalleEquipoMarcaField = document.getElementById("detalle-equipo-marca-field");
+const detalleEquipoModeloField = document.getElementById("detalle-equipo-modelo-field");
+const detalleEquipoTipoInput = document.getElementById("detalle-equipo-tipo");
+const detalleEquipoMarcaInput = document.getElementById("detalle-equipo-marca");
+const detalleEquipoModeloInput = document.getElementById("detalle-equipo-modelo");
+const detalleCantidadInput = document.getElementById("detalle-cantidad");
+const detallePlazoEntregaInput = document.getElementById("detalle-plazo-entrega");
+const detalleProveedorInput = document.getElementById("detalle-proveedor");
+const detalleFechaInstalacionInput = document.getElementById("detalle-fecha-instalacion");
+const detalleDuracionInstalacionInput = document.getElementById("detalle-duracion-instalacion");
+const detalleResponsableInstalacionInput = document.getElementById("detalle-responsable-instalacion");
+const detalleFechaComisionamientoInput = document.getElementById("detalle-fecha-comisionamiento");
+const detalleFechaPruebasInput = document.getElementById("detalle-fecha-pruebas");
+const detalleFechaPuestaServicioInput = document.getElementById("detalle-fecha-puesta-servicio");
+const detalleCriterioAceptacionInput = document.getElementById("detalle-criterio-aceptacion");
+const detalleInicioGarantiaInput = document.getElementById("detalle-inicio-garantia");
 
 // Mapa id -> nombre de los clientes, para mostrar el nombre en la tabla
 // sin tener que volver a consultar la base de datos por cada fila.
 let clientesPorId = new Map();
+
+// Mapas id -> email/nombre para Responsable/Aprobador (perfiles), Proveedor
+// y Equipo del detalle, para mostrar el dato en las tablas sin consultas
+// adicionales por fila.
+let perfilesPorId = new Map();
+let proveedoresPorId = new Map();
+let equiposPorId = new Map();
+
+function formatEquipoLabel(equipo) {
+  return [equipo.tipo, equipo.marca, equipo.modelo].filter(Boolean).join(" — ");
+}
 
 // Ids de las ofertas (no aprobadas) que el usuario actual puede aprobar,
 // según public.puede_aprobar_oferta(). Solo decide si se MUESTRA el botón
@@ -40,6 +76,11 @@ function clearForm() {
 
   const aprobadaOption = estadoInput.querySelector('option[value="Aprobada"]');
   if (aprobadaOption) aprobadaOption.remove();
+
+  detalleSection.style.display = "none";
+  detalleForm.reset();
+  detalleFormError.textContent = "";
+  detalleTableBody.innerHTML = "";
 }
 
 function renderOfertas(ofertas) {
@@ -63,6 +104,12 @@ function renderOfertas(ofertas) {
 
     const fechaCell = document.createElement("td");
     fechaCell.textContent = oferta.fecha || "";
+
+    const responsableCell = document.createElement("td");
+    responsableCell.textContent = perfilesPorId.get(oferta.responsable_id) || "";
+
+    const aprobadorCell = document.createElement("td");
+    aprobadorCell.textContent = perfilesPorId.get(oferta.aprobador_id) || "";
 
     const actionsCell = document.createElement("td");
     actionsCell.className = "actions";
@@ -101,7 +148,7 @@ function renderOfertas(ofertas) {
       actionsCell.appendChild(deleteButton);
     }
 
-    row.append(tituloCell, montoCell, clienteCell, estadoCell, fechaCell, actionsCell);
+    row.append(tituloCell, montoCell, clienteCell, estadoCell, fechaCell, responsableCell, aprobadorCell, actionsCell);
     tableBody.appendChild(row);
   }
 }
@@ -140,6 +187,250 @@ async function loadClienteOptions() {
     clienteInput.appendChild(option);
   }
 }
+
+// Carga perfiles una sola vez y llena los 3 selectores que apuntan a
+// perfiles (Responsable y Aprobador de la oferta, Responsable de
+// instalación del detalle) — mismo patrón que loadPerfilesOptions en
+// tareas.js, adaptado para varios <select> a la vez.
+async function loadPerfilesOptions() {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("perfiles")
+    .select("id, email")
+    .order("email", { ascending: true });
+
+  if (error) return;
+
+  perfilesPorId = new Map(data.map((p) => [p.id, p.email]));
+
+  for (const select of [responsableInput, aprobadorInput, detalleResponsableInstalacionInput]) {
+    select.innerHTML = "";
+
+    const sinOpcion = document.createElement("option");
+    sinOpcion.value = "";
+    sinOpcion.textContent = "(sin responsable)";
+    select.appendChild(sinOpcion);
+
+    for (const perfil of data) {
+      const option = document.createElement("option");
+      option.value = perfil.id;
+      option.textContent = perfil.email;
+      select.appendChild(option);
+    }
+  }
+}
+
+async function loadProveedorOptions() {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("proveedores")
+    .select("id, nombre")
+    .order("nombre", { ascending: true });
+
+  if (error) return;
+
+  proveedoresPorId = new Map(data.map((proveedor) => [proveedor.id, proveedor.nombre]));
+
+  detalleProveedorInput.innerHTML = "";
+
+  const sinProveedorOption = document.createElement("option");
+  sinProveedorOption.value = "";
+  sinProveedorOption.textContent = "(sin proveedor)";
+  detalleProveedorInput.appendChild(sinProveedorOption);
+
+  for (const proveedor of data) {
+    const option = document.createElement("option");
+    option.value = proveedor.id;
+    option.textContent = proveedor.nombre;
+    detalleProveedorInput.appendChild(option);
+  }
+}
+
+async function loadEquipoOptions() {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("equipos")
+    .select("id, tipo, marca, modelo")
+    .order("tipo", { ascending: true });
+
+  if (error) return;
+
+  equiposPorId = new Map(data.map((equipo) => [equipo.id, formatEquipoLabel(equipo)]));
+
+  detalleEquipoInput.innerHTML = "";
+
+  for (const equipo of data) {
+    const option = document.createElement("option");
+    option.value = equipo.id;
+    option.textContent = formatEquipoLabel(equipo);
+    detalleEquipoInput.appendChild(option);
+  }
+
+  const nuevoOption = document.createElement("option");
+  nuevoOption.value = "__nuevo__";
+  nuevoOption.textContent = "+ Crear equipo nuevo";
+  detalleEquipoInput.appendChild(nuevoOption);
+
+  toggleEquipoNuevoFields();
+}
+
+function toggleEquipoNuevoFields() {
+  const esNuevo = detalleEquipoInput.value === "__nuevo__";
+  detalleEquipoTipoField.style.display = esNuevo ? "" : "none";
+  detalleEquipoMarcaField.style.display = esNuevo ? "" : "none";
+  detalleEquipoModeloField.style.display = esNuevo ? "" : "none";
+}
+
+detalleEquipoInput.addEventListener("change", toggleEquipoNuevoFields);
+
+function renderDetalleOfertas(lineas) {
+  detalleTableBody.innerHTML = "";
+
+  for (const linea of lineas) {
+    const row = document.createElement("tr");
+
+    const equipoCell = document.createElement("td");
+    equipoCell.textContent = equiposPorId.get(linea.equipo_id) || "(sin equipo)";
+
+    const cantidadCell = document.createElement("td");
+    cantidadCell.textContent = linea.cantidad ?? "";
+
+    const proveedorCell = document.createElement("td");
+    proveedorCell.textContent = proveedoresPorId.get(linea.proveedor_id) || "";
+
+    const fechaInstalacionCell = document.createElement("td");
+    fechaInstalacionCell.textContent = linea.fecha_instalacion || "";
+
+    const responsableInstalacionCell = document.createElement("td");
+    responsableInstalacionCell.textContent = perfilesPorId.get(linea.responsable_instalacion_id) || "";
+
+    const actionsCell = document.createElement("td");
+    actionsCell.className = "actions";
+
+    if (window.puedeBorrar) {
+      const deleteButton = document.createElement("button");
+      deleteButton.textContent = "Borrar";
+      deleteButton.className = "btn-danger";
+      deleteButton.addEventListener("click", () => deleteDetalleLinea(linea.id));
+      actionsCell.appendChild(deleteButton);
+    }
+
+    row.append(equipoCell, cantidadCell, proveedorCell, fechaInstalacionCell, responsableInstalacionCell, actionsCell);
+    detalleTableBody.appendChild(row);
+  }
+}
+
+async function loadDetalleOfertas(ofertaId) {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("detalle_ofertas")
+    .select("*")
+    .eq("oferta_id", ofertaId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    detalleFormError.textContent = "No se pudo cargar el detalle de la oferta.";
+    return;
+  }
+
+  renderDetalleOfertas(data);
+}
+
+async function deleteDetalleLinea(id) {
+  const confirmed = confirm("¿Seguro que quieres borrar esta línea de detalle?");
+  if (!confirmed) return;
+
+  const session = await ensureSession();
+  if (!session) {
+    detalleFormError.textContent = "Tu sesión expiró. Vuelve a iniciar sesión.";
+    return;
+  }
+
+  const { error } = await window.supabaseClient.from("detalle_ofertas").delete().eq("id", id);
+
+  if (error) {
+    detalleFormError.textContent = "No se pudo borrar la línea de detalle.";
+    return;
+  }
+
+  loadDetalleOfertas(idInput.value);
+}
+
+detalleForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  detalleFormError.textContent = "";
+
+  const ofertaId = idInput.value;
+  if (!ofertaId) return;
+
+  const session = await ensureSession();
+  if (!session) {
+    detalleFormError.textContent = "Tu sesión expiró. Vuelve a iniciar sesión.";
+    return;
+  }
+
+  let equipoId = detalleEquipoInput.value;
+
+  if (equipoId === "__nuevo__") {
+    if (!detalleEquipoTipoInput.value) {
+      detalleFormError.textContent = "El tipo de equipo es obligatorio para crear un equipo nuevo.";
+      return;
+    }
+
+    const { data: nuevoEquipo, error: equipoError } = await window.supabaseClient
+      .from("equipos")
+      .insert({
+        tipo: detalleEquipoTipoInput.value,
+        marca: detalleEquipoMarcaInput.value || null,
+        modelo: detalleEquipoModeloInput.value || null,
+      })
+      .select()
+      .single();
+
+    if (equipoError) {
+      detalleFormError.textContent = "No se pudo crear el equipo.";
+      return;
+    }
+
+    equipoId = nuevoEquipo.id;
+    await loadEquipoOptions();
+  }
+
+  const payload = {
+    oferta_id: ofertaId,
+    equipo_id: equipoId || null,
+    cantidad: detalleCantidadInput.value || null,
+    plazo_entrega_dias: detallePlazoEntregaInput.value || null,
+    proveedor_id: detalleProveedorInput.value || null,
+    fecha_instalacion: detalleFechaInstalacionInput.value || null,
+    duracion_instalacion: detalleDuracionInstalacionInput.value || null,
+    responsable_instalacion_id: detalleResponsableInstalacionInput.value || null,
+    fecha_comisionamiento: detalleFechaComisionamientoInput.value || null,
+    fecha_pruebas: detalleFechaPruebasInput.value || null,
+    fecha_puesta_servicio: detalleFechaPuestaServicioInput.value || null,
+    criterio_aceptacion: detalleCriterioAceptacionInput.value || null,
+    inicio_garantia: detalleInicioGarantiaInput.value || null,
+  };
+
+  const { error } = await window.supabaseClient.from("detalle_ofertas").insert(payload);
+
+  if (error) {
+    detalleFormError.textContent = "No se pudo guardar la línea de detalle.";
+    return;
+  }
+
+  detalleForm.reset();
+  toggleEquipoNuevoFields();
+  loadDetalleOfertas(ofertaId);
+});
 
 // Para cada oferta todavía no aprobada, pregunta vía RPC si el usuario
 // actual puede aprobarla, y guarda los ids permitidos en
@@ -231,9 +522,16 @@ function startEdit(oferta) {
 
   estadoInput.value = oferta.estado;
   fechaInput.value = oferta.fecha || "";
+  responsableInput.value = oferta.responsable_id || "";
+  aprobadorInput.value = oferta.aprobador_id || "";
 
   submitButton.textContent = "Guardar cambios";
   cancelEditButton.style.display = "inline-block";
+
+  detalleSection.style.display = "";
+  detalleForm.reset();
+  toggleEquipoNuevoFields();
+  loadDetalleOfertas(oferta.id);
 }
 
 async function aprobarOferta(id) {
@@ -323,6 +621,8 @@ form.addEventListener("submit", async (event) => {
     cliente_id: clienteInput.value || null,
     estado: estadoInput.value,
     fecha: fechaInput.value || null,
+    responsable_id: responsableInput.value || null,
+    aprobador_id: aprobadorInput.value || null,
   };
 
   const editingId = idInput.value;
@@ -345,6 +645,9 @@ cancelEditButton.addEventListener("click", clearForm);
 async function init() {
   await window.authReady;
   await loadClienteOptions();
+  await loadPerfilesOptions();
+  await loadProveedorOptions();
+  await loadEquipoOptions();
   await loadOfertas();
 }
 

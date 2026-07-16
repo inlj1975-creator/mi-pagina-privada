@@ -660,3 +660,71 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 23) Detalle de Ofertas: Responsable/Aprobador en la oferta, catálogo de
+-- equipos reutilizable, y líneas de detalle con los datos de instalación
+-- de cada equipo en esa oferta puntual. Responsable/Aprobador son solo
+-- informativos (no disparan mail ni cambian quién puede aprobar — eso
+-- sigue siendo puede_aprobar_oferta() por monto).
+alter table ofertas
+  add column if not exists responsable_id uuid references public.perfiles(id) on delete set null;
+alter table ofertas
+  add column if not exists aprobador_id uuid references public.perfiles(id) on delete set null;
+
+-- Catálogo reutilizable: mismo patrón "lista compartida" que Clientes/Proveedores.
+create table if not exists equipos (
+  id uuid primary key default gen_random_uuid(),
+  tipo text not null,
+  marca text,
+  modelo text,
+  created_at timestamptz not null default now()
+);
+
+alter table equipos enable row level security;
+
+create policy "Usuarios autenticados pueden leer equipos"
+  on equipos for select to authenticated using (true);
+create policy "Usuarios autenticados pueden crear equipos"
+  on equipos for insert to authenticated with check (true);
+create policy "Usuarios autenticados pueden editar equipos"
+  on equipos for update to authenticated using (true) with check (true);
+create policy "Admin, director o gerente pueden borrar equipos"
+  on equipos for delete to authenticated using (public.puede_borrar());
+
+grant select, insert, update, delete on public.equipos to authenticated;
+
+-- Detalle: pertenece por completo a una oferta (on delete cascade, a
+-- diferencia del resto del proyecto que usa "set null" para relaciones
+-- opcionales) — una línea de detalle no tiene sentido sin su oferta.
+create table if not exists detalle_ofertas (
+  id uuid primary key default gen_random_uuid(),
+  oferta_id uuid not null references public.ofertas(id) on delete cascade,
+  equipo_id uuid references public.equipos(id) on delete set null,
+  cantidad integer,
+  plazo_entrega_dias integer,
+  proveedor_id uuid references public.proveedores(id) on delete set null,
+  fecha_instalacion date,
+  duracion_instalacion text,
+  responsable_instalacion_id uuid references public.perfiles(id) on delete set null,
+  fecha_comisionamiento date,
+  fecha_pruebas date,
+  fecha_puesta_servicio date,
+  criterio_aceptacion text,
+  inicio_garantia date,
+  created_at timestamptz not null default now()
+);
+
+alter table detalle_ofertas enable row level security;
+
+create policy "Usuarios autenticados pueden leer detalle_ofertas"
+  on detalle_ofertas for select to authenticated using (true);
+create policy "Usuarios autenticados pueden crear detalle_ofertas"
+  on detalle_ofertas for insert to authenticated with check (true);
+create policy "Usuarios autenticados pueden editar detalle_ofertas"
+  on detalle_ofertas for update to authenticated using (true) with check (true);
+create policy "Admin, director o gerente pueden borrar detalle_ofertas"
+  on detalle_ofertas for delete to authenticated using (public.puede_borrar());
+
+grant select, insert, update, delete on public.detalle_ofertas to authenticated;
+-- service_role queda cubierto solo por el "alter default privileges" de la
+-- sección 21; no hace falta GRANT aparte (tablas creadas después de esa migración).

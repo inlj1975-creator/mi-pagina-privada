@@ -45,6 +45,18 @@
           <label for="fecha">Fecha</label>
           <input type="date" id="fecha" />
         </div>
+        <div class="field">
+          <label for="responsable">Responsable</label>
+          <select id="responsable">
+            <option value="">(sin responsable)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="aprobador">Aprobador</label>
+          <select id="aprobador">
+            <option value="">(sin aprobador)</option>
+          </select>
+        </div>
       </div>
       <p class="error-message" id="form-error"></p>
       <button type="submit" class="btn-primary" id="submit-button">Crear oferta</button>
@@ -60,6 +72,8 @@
             <th>Cliente</th>
             <th>Estado</th>
             <th>Fecha</th>
+            <th>Responsable</th>
+            <th>Aprobador</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -68,6 +82,101 @@
         </tbody>
       </table>
     </div>
+
+    <section id="detalle-section" style="display: none;">
+      <h2>Detalle de la oferta</h2>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Cantidad</th>
+              <th>Proveedor</th>
+              <th>Fecha instalación</th>
+              <th>Responsable instalación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="detalle-table-body">
+            <!-- Las filas se generan dinámicamente desde js/ofertas.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <form id="detalle-form" class="project-form">
+        <div class="row">
+          <div class="field">
+            <label for="detalle-equipo">Equipo</label>
+            <select id="detalle-equipo">
+              <option value="__nuevo__">+ Crear equipo nuevo</option>
+            </select>
+          </div>
+          <div class="field" id="detalle-equipo-tipo-field">
+            <label for="detalle-equipo-tipo">Tipo de equipo</label>
+            <input type="text" id="detalle-equipo-tipo" />
+          </div>
+          <div class="field" id="detalle-equipo-marca-field">
+            <label for="detalle-equipo-marca">Marca</label>
+            <input type="text" id="detalle-equipo-marca" />
+          </div>
+          <div class="field" id="detalle-equipo-modelo-field">
+            <label for="detalle-equipo-modelo">Modelo</label>
+            <input type="text" id="detalle-equipo-modelo" />
+          </div>
+          <div class="field">
+            <label for="detalle-cantidad">Cantidad</label>
+            <input type="number" id="detalle-cantidad" min="0" step="1" />
+          </div>
+          <div class="field">
+            <label for="detalle-plazo-entrega">Plazo de entrega (días)</label>
+            <input type="number" id="detalle-plazo-entrega" min="0" step="1" />
+          </div>
+          <div class="field">
+            <label for="detalle-proveedor">Proveedor</label>
+            <select id="detalle-proveedor">
+              <option value="">(sin proveedor)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="detalle-fecha-instalacion">Fecha instalación</label>
+            <input type="date" id="detalle-fecha-instalacion" />
+          </div>
+          <div class="field">
+            <label for="detalle-duracion-instalacion">Duración instalación</label>
+            <input type="text" id="detalle-duracion-instalacion" />
+          </div>
+          <div class="field">
+            <label for="detalle-responsable-instalacion">Responsable instalación</label>
+            <select id="detalle-responsable-instalacion">
+              <option value="">(sin responsable)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="detalle-fecha-comisionamiento">Fecha comisionamiento</label>
+            <input type="date" id="detalle-fecha-comisionamiento" />
+          </div>
+          <div class="field">
+            <label for="detalle-fecha-pruebas">Fecha de pruebas</label>
+            <input type="date" id="detalle-fecha-pruebas" />
+          </div>
+          <div class="field">
+            <label for="detalle-fecha-puesta-servicio">Fecha puesta en servicio</label>
+            <input type="date" id="detalle-fecha-puesta-servicio" />
+          </div>
+          <div class="field">
+            <label for="detalle-criterio-aceptacion">Criterio de aceptación</label>
+            <textarea id="detalle-criterio-aceptacion"></textarea>
+          </div>
+          <div class="field">
+            <label for="detalle-inicio-garantia">Inicio de garantía</label>
+            <input type="date" id="detalle-inicio-garantia" />
+          </div>
+        </div>
+        <p class="error-message" id="detalle-form-error"></p>
+        <button type="submit" class="btn-primary">Agregar línea</button>
+      </form>
+    </section>
   </main>
 
   <script src="js/nav.js"></script>
