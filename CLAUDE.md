@@ -319,14 +319,23 @@ requiere, **una sola vez por clon/máquina**:
 ```
 git config merge.ours.driver true
 ```
-Como red de seguridad extra (por si en algún clon falta ese paso), después
-de cualquier merge entre `main` y `staging` conviene confirmar a ojo que
-`js/config.js` sigue apuntando al Supabase correcto (prod termina en
-`zurfciuqrsnlcafdatzf`).
+**Importante:** el merge driver solo se activa en un merge de verdad (con
+commit de merge) — si `main` no tiene ningún commit propio desde que se
+creó `staging`, git hace **fast-forward** en vez de merge, y un
+fast-forward no dispara ningún merge driver. Ya pasó una vez: promover
+`staging` a `main` pisó `config.js` de producción con los valores de
+staging, detectado antes de pushear por suerte. Por eso el merge de
+promoción siempre tiene que forzarse con `--no-ff` (ver flujo de trabajo
+abajo), nunca un `git merge staging` a secas.
+
+Como red de seguridad extra (por si en algún clon falta ese paso o se
+usa un merge normal por error), después de cualquier merge entre `main`
+y `staging` conviene confirmar a ojo que `js/config.js` sigue apuntando
+al Supabase correcto (prod termina en `zurfciuqrsnlcafdatzf`).
 
 Flujo de trabajo: se prueba en `staging` (viendo los cambios en la URL de
 Cloudflare Pages) y, cuando está conforme, se promueve con
-`git checkout main && git merge staging` seguido del chequeo de
+`git checkout main && git merge --no-ff staging` seguido del chequeo de
 `config.js` de arriba y `git push origin main`.
 
 ## Patrón de seguridad al agregar una entidad nueva
