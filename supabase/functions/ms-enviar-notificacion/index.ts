@@ -163,6 +163,10 @@ Deno.serve(async (req) => {
 
     let enviadoComoGrupo = false;
     let mailResp: Response | null = null;
+    // Guarda el motivo del intento como grupo (si se probó y falló), para
+    // poder diagnosticarlo sin adivinar -- antes esto se perdía en
+    // silencio si terminaba usando el fallback.
+    let errorComoGrupo: string | null = null;
 
     if (groupId) {
       mailResp = await fetch(`https://graph.microsoft.com/v1.0/groups/${groupId}/sendMail`, {
@@ -171,6 +175,11 @@ Deno.serve(async (req) => {
         body: JSON.stringify(mensaje),
       });
       enviadoComoGrupo = mailResp.ok;
+
+      if (!mailResp.ok) {
+        const errorBody = await mailResp.json().catch(() => ({}));
+        errorComoGrupo = `${mailResp.status} ${errorBody.error?.message || "sin detalle"}`;
+      }
     }
 
     if (!mailResp || !mailResp.ok) {
@@ -191,7 +200,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    return jsonResponse({ ok: true, enviado_como_grupo: enviadoComoGrupo });
+    return jsonResponse({ ok: true, enviado_como_grupo: enviadoComoGrupo, error_como_grupo: errorComoGrupo });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }
