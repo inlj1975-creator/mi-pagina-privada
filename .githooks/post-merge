@@ -1,0 +1,37 @@
+#!/bin/sh
+# js/config.js diverge a propósito entre main (producción) y staging (ver
+# CLAUDE.md, "Ambiente de staging"). El merge=ours de .gitattributes NO
+# alcanza para protegerlo: Git solo invoca ese driver personalizado cuando
+# los DOS lados de un merge cambiaron el archivo desde el ancestro común.
+# En este repo casi siempre cambia un solo lado (main no toca config.js
+# directamente), así que Git lo trata como "cambio sin conflicto" y aplica
+# el de la otra rama sin pasar nunca por el driver — confirmado a mano
+# reproduciendo el merge en una rama descartable.
+#
+# Este hook no depende de esa detección: después de CUALQUIER merge,
+# compara config.js con lo que la rama actual tenía ANTES del merge
+# (ORIG_HEAD) y, si cambió, lo restaura y lo deja *staged* (sin commitear
+# solo, para que quede a la vista y se revise antes de confirmar).
+
+# $1 = 1 en un squash merge; ORIG_HEAD no aplica en ese caso.
+if [ "$1" = "1" ]; then
+  exit 0
+fi
+
+if ! git rev-parse -q --verify ORIG_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
+ANTES=$(git rev-parse ORIG_HEAD)
+CONFIG_ANTES=$(git show "$ANTES:js/config.js" 2>/dev/null) || exit 0
+CONFIG_AHORA=$(cat js/config.js 2>/dev/null)
+
+if [ "$CONFIG_ANTES" != "$CONFIG_AHORA" ]; then
+  git show "$ANTES:js/config.js" > js/config.js
+  git add js/config.js
+  echo ""
+  echo "⚠ post-merge: el merge trajo un js/config.js distinto al que tenía"
+  echo "  esta rama antes de mergear (staging/main tienen valores propios"
+  echo "  a propósito). Se restauró la versión de esta rama y quedó"
+  echo "  'staged' — revisá y hacé un commit aparte antes de pushear."
+fi
