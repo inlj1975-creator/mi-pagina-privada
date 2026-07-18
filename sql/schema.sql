@@ -794,3 +794,19 @@ alter table proyectos
       else null
     end
   ) stored;
+
+-- 25) Fase 2 de "Proyectos ampliados": Grupo de Microsoft 365 por proyecto
+-- (carpetas, calendario compartido, membresía). Columnas nullable y sin
+-- default (mismo motivo que siempre: convertir_oferta_en_proyecto() no
+-- las inserta, así que NOT NULL sin default rompería esa función).
+
+alter table proyectos
+  add column if not exists ms_group_id text,
+  add column if not exists ms_group_email text;
+
+alter table tareas
+  add column if not exists ms_group_event_id text;
+
+-- service_role solo tenía SELECT sobre proyectos (sección 21d); ahora
+-- también necesita UPDATE para guardar ms_group_id/ms_group_email.
+grant update on public.proyectos to service_role;

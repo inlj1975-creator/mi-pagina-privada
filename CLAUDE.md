@@ -293,6 +293,77 @@ rota "por las dudas" como los demás, solo si se sabe que se filtró, y
 conviene tener una copia guardada en un lugar seguro (Supabase no permite
 volver a ver el valor de un secret ya guardado).
 
+## Grupo de Microsoft 365 por proyecto (Fase 2)
+
+Cada proyecto tiene un Grupo de Microsoft 365 propio (carpetas, calendario
+compartido, membresía), creado la primera vez que hace falta — **no** se
+crea retroactivamente para proyectos ya existentes.
+
+Disparadores de creación (Edge Function `ms-sync-grupo-proyecto`, `{
+proyecto_id, perfil_id_extra? }`):
+- Alta o edición manual en `proyectos.html` (`js/projects.js`).
+- Conversión de oferta aprobada en proyecto (`js/ofertas.js`,
+  `convertir_oferta_en_proyecto`).
+- Guardado de una tarea con `proyecto_id` (`js/tareas.js`), pasando el
+  `responsable_id` de esa tarea como `perfil_id_extra`.
+
+La función es idempotente vía `proyectos.ms_group_id` (columna nueva,
+sección 25 de `sql/schema.sql`): si ya tiene valor, no se vuelve a crear el
+grupo, solo se re-sincroniza membresía. `proyectos.ms_group_email` guarda
+el correo del grupo, usado como remitente de `ms-enviar-notificacion`.
+
+**Membresía**: aditiva únicamente — nunca se saca a nadie del grupo desde
+la app, solo se agrega. Miembros: `responsable_comercial_id` +
+`project_manager_id` del proyecto, más el `responsable_id` de cada tarea
+(se agrega cada vez que se guarda una tarea de ese proyecto). Se resuelve
+el email de cada perfil vía la tabla `perfiles` y se asume que coincide con
+su userPrincipalName en Microsoft/Entra ID — si algún empleado tiene un
+alias o dominio distinto en Microsoft, agregarlo al grupo falla (queda en
+el campo `errores` de la respuesta) sin bloquear al resto.
+
+**Carpetas**: "Propuesta" / "Factura Compras" / "Factura Ventas", creadas
+en la raíz del drive (SharePoint) del grupo, solo en el momento en que se
+crea el grupo (no se reintentan después si fallan parcialmente).
+
+**Calendario**: cada tarea sincroniza su evento en DOS calendarios
+independientes — el personal del responsable (`tareas.outlook_event_id`,
+como antes) y el compartido del grupo del proyecto
+(`tareas.ms_group_event_id`, columna nueva). Las dos sync conviven; si
+falla una, la otra se intenta igual (`ms-sync-evento-tarea` devuelve
+`{ personal: {...}, grupo: {...} }`).
+
+**Email de avisos**: `ms-enviar-notificacion` intenta mandar primero "como"
+el grupo del proyecto (`/groups/{id}/sendMail`, permiso de aplicación); si
+el proyecto no tiene grupo o ese envío falla, cae de vuelta a
+`MS_REMITENTE_EMAIL` (comportamiento de siempre) — nunca queda una
+notificación sin mandarse por este cambio.
+
+Permisos Graph nuevos (Azure Portal → Entra ID → App registrations →
+Melirrepu → API permissions, todos de tipo **Application** con admin
+consent):
+- `Group.ReadWrite.All` — crear el grupo y agregar miembros.
+- `Files.ReadWrite.All` — crear carpetas en el drive del grupo.
+- `Calendars.ReadWrite` (variante Application; ya existía la Delegated, que
+  sigue usando la sync al calendario personal) — eventos del calendario
+  compartido.
+- `Mail.Send` (Application) ya estaba otorgado y alcanza también para
+  `/groups/{id}/sendMail` — no hace falta nada nuevo para esto.
+
+`Group.ReadWrite.All` es un permiso amplio (control sobre todos los grupos
+del tenant, no solo los creados por esta app) — no existe uno más angosto
+en Graph que cubra creación + membresía.
+
+**Pasos manuales pendientes del usuario** (nada de esto lo puede hacer
+Claude Code):
+1. Agregar los 3 permisos de aplicación de arriba en Azure Portal y dar
+   admin consent.
+2. Pegar la sección 25 de `sql/schema.sql` en el editor SQL de Supabase
+   (staging primero, después prod).
+3. Desplegar a mano, vía el editor del dashboard de Supabase (Edge
+   Functions → Via Editor): la función nueva `ms-sync-grupo-proyecto` y los
+   cambios de código en `ms-sync-evento-tarea` y `ms-enviar-notificacion`
+   (staging primero, después prod).
+
 ## Ambiente de staging
 
 Hasta acá cada push a `main` llegaba directo a producción (GitHub Pages

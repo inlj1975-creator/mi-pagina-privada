@@ -273,13 +273,26 @@ form.addEventListener("submit", async (event) => {
 
   const editingId = idInput.value;
 
-  const { error } = editingId
-    ? await window.supabaseClient.from("proyectos").update(payload).eq("id", editingId)
-    : await window.supabaseClient.from("proyectos").insert(payload);
+  const { data, error } = editingId
+    ? await window.supabaseClient.from("proyectos").update(payload).eq("id", editingId).select().single()
+    : await window.supabaseClient.from("proyectos").insert(payload).select().single();
 
   if (error) {
     formError.textContent = "No se pudo guardar el proyecto.";
     return;
+  }
+
+  // Grupo M365 del proyecto: se crea la primera vez (alta) y se
+  // re-sincroniza la membresía de comercial/PM en cada guardado posterior
+  // (aditivo; el backend decide si ya existe el grupo o hay que crearlo).
+  // Fire-and-forget, mismo patrón que ms-sync-evento-tarea en js/tareas.js.
+  try {
+    const { error: grupoError } = await window.supabaseClient.functions.invoke("ms-sync-grupo-proyecto", {
+      body: { proyecto_id: editingId || data.id },
+    });
+    if (grupoError) console.error("ms-sync-grupo-proyecto:", grupoError);
+  } catch (e) {
+    console.error("ms-sync-grupo-proyecto:", e);
   }
 
   clearForm();

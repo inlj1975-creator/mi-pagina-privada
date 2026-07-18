@@ -1,12 +1,17 @@
-// Crea/actualiza/borra el evento de Outlook correspondiente a una tarea.
-// Sync de un solo sentido (la app manda a Outlook, no al revés). Usa la
-// service role key porque necesita leer la tarea y la conexión OAuth del
-// RESPONSABLE, que no siempre es quien está guardando el formulario.
+// Crea/actualiza/borra el evento de Outlook correspondiente a una tarea, en
+// DOS calendarios independientes: (a) el calendario PERSONAL del
+// responsable (endpoint delegado /me/events, sync original) y (b) el
+// calendario COMPARTIDO del Grupo M365 del proyecto de la tarea (endpoint
+// de aplicación /groups/{id}/events, agregado en la Fase 2 de "Proyectos
+// ampliados"). Las dos sync son INDEPENDIENTES entre sí: si el responsable
+// no conectó su Outlook pero el proyecto sí tiene grupo, la sync de grupo
+// se intenta igual (y viceversa) -- ninguna bloquea a la otra.
 //
-// Si el responsable de la tarea no conectó su Outlook (o su conexión ya
-// no sirve), esta función devuelve { skipped: true } en vez de un error:
-// la tarea ya se guardó en la app antes de llamar acá, así que un
-// problema del lado de Outlook nunca debe verse como una falla real.
+// Cualquier problema de cualquiera de las dos (responsable sin conexión,
+// proyecto sin grupo, error de Graph) queda en el campo correspondiente
+// ("personal"/"grupo") de la respuesta, con status 200: la tarea ya se
+// guardó en la app antes de llamar acá, así que un problema del lado de
+// Outlook nunca debe verse como una falla real.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -145,13 +150,123 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
   return tokenData.access_token;
 }
 
+// Token de aplicación (mismo patrón que ms-enviar-notificacion), para
+// escribir en el calendario COMPARTIDO del grupo sin depender de que nadie
+// haya conectado su Outlook.
+async function obtenerAccessTokenAplicacion() {
+  const resp = await fetch(
+    `https://login.microsoftonline.com/${Deno.env.get("MS_TENANT_ID")}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: Deno.env.get("MS_CLIENT_ID")!,
+        client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
+        grant_type: "client_credentials",
+        scope: "https://graph.microsoft.com/.default",
+      }),
+    }
+  );
+  const tokenData = await resp.json();
+  if (!resp.ok) return null;
+  return tokenData.access_token;
+}
+
+// deno-lint-ignore no-explicit-any
+async function obtenerGroupIdDeProyecto(supabaseAdmin: any, proyectoId: string | null) {
+  if (!proyectoId) return null;
+  const { data } = await supabaseAdmin
+    .from("proyectos")
+    .select("ms_group_id")
+    .eq("id", proyectoId)
+    .maybeSingle();
+  return data?.ms_group_id || null;
+}
+
+// deno-lint-ignore no-explicit-any
+function armarEventoBody(tarea: any, infoProyecto: string) {
+  const fechaInicio = tarea.fecha_inicio || tarea.fecha_termino;
+  const fechaTermino = tarea.fecha_termino || tarea.fecha_inicio;
+  return {
+    subject: tarea.titulo,
+    body: { contentType: "text", content: (tarea.descripcion || "") + infoProyecto },
+    isAllDay: true,
+    start: { dateTime: `${fechaInicio}T00:00:00`, timeZone: "UTC" },
+    end: { dateTime: `${sumarUnDia(fechaTermino)}T00:00:00`, timeZone: "UTC" },
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function sincronizarCalendarioPersonal(supabaseAdmin: any, tarea: any, infoProyecto: string) {
+  if (!tarea.responsable_id) return { skipped: true, motivo: "la tarea no tiene responsable_id" };
+
+  const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, tarea.responsable_id);
+  if (!accessToken) {
+    return { skipped: true, motivo: "responsable sin conexión de Outlook válida" };
+  }
+
+  const eventoBody = armarEventoBody(tarea, infoProyecto);
+  const graphUrl = tarea.outlook_event_id
+    ? `https://graph.microsoft.com/v1.0/me/events/${tarea.outlook_event_id}`
+    : `https://graph.microsoft.com/v1.0/me/events`;
+
+  const graphResp = await fetch(graphUrl, {
+    method: tarea.outlook_event_id ? "PATCH" : "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(eventoBody),
+  });
+
+  const graphData = await graphResp.json().catch(() => ({}));
+  if (!graphResp.ok) {
+    return { error: graphData.error?.message || "Error al sincronizar el evento con Outlook" };
+  }
+
+  if (!tarea.outlook_event_id) {
+    await supabaseAdmin.from("tareas").update({ outlook_event_id: graphData.id }).eq("id", tarea.id);
+  }
+
+  return { ok: true };
+}
+
+// deno-lint-ignore no-explicit-any
+async function sincronizarCalendarioGrupo(supabaseAdmin: any, tarea: any, infoProyecto: string) {
+  const groupId = await obtenerGroupIdDeProyecto(supabaseAdmin, tarea.proyecto_id);
+  if (!groupId) return { skipped: true, motivo: "el proyecto no tiene Grupo M365" };
+
+  const accessToken = await obtenerAccessTokenAplicacion();
+  if (!accessToken) return { skipped: true, motivo: "no se pudo obtener token de aplicación de Microsoft" };
+
+  const eventoBody = armarEventoBody(tarea, infoProyecto);
+  const graphUrl = tarea.ms_group_event_id
+    ? `https://graph.microsoft.com/v1.0/groups/${groupId}/events/${tarea.ms_group_event_id}`
+    : `https://graph.microsoft.com/v1.0/groups/${groupId}/events`;
+
+  const graphResp = await fetch(graphUrl, {
+    method: tarea.ms_group_event_id ? "PATCH" : "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(eventoBody),
+  });
+
+  const graphData = await graphResp.json().catch(() => ({}));
+  if (!graphResp.ok) {
+    return { error: graphData.error?.message || "Error al sincronizar el evento con el calendario del grupo" };
+  }
+
+  if (!tarea.ms_group_event_id) {
+    await supabaseAdmin.from("tareas").update({ ms_group_event_id: graphData.id }).eq("id", tarea.id);
+  }
+
+  return { ok: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { tarea_id, accion, outlook_event_id, responsable_id } = await req.json();
+    const { tarea_id, accion, outlook_event_id, responsable_id, ms_group_event_id, proyecto_id } =
+      await req.json();
 
     // "PROJECT_SECRET_KEY" guarda la "secret key" (sb_secret_...) del
     // sistema nuevo de claves de Supabase — hace de reemplazo del
@@ -166,22 +281,43 @@ Deno.serve(async (req) => {
     );
 
     if (accion === "delete") {
-      if (!outlook_event_id || !responsable_id) {
-        return jsonResponse({ skipped: true });
+      const resultados: Record<string, unknown> = {};
+
+      if (outlook_event_id && responsable_id) {
+        const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, responsable_id);
+        if (accessToken) {
+          // No revisamos el resultado: si el evento ya no existía (por
+          // ejemplo, alguien lo borró a mano en Outlook), el resultado que
+          // nos importa (que no quede el evento) ya se cumple igual.
+          await fetch(`https://graph.microsoft.com/v1.0/me/events/${outlook_event_id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          resultados.personal = { ok: true };
+        } else {
+          resultados.personal = { skipped: true, motivo: "responsable sin conexión de Outlook válida" };
+        }
+      } else {
+        resultados.personal = { skipped: true, motivo: "sin outlook_event_id o responsable_id" };
       }
 
-      const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, responsable_id);
-      if (!accessToken) return jsonResponse({ skipped: true });
+      if (ms_group_event_id && proyecto_id) {
+        const groupId = await obtenerGroupIdDeProyecto(supabaseAdmin, proyecto_id);
+        const accessToken = groupId ? await obtenerAccessTokenAplicacion() : null;
+        if (accessToken) {
+          await fetch(`https://graph.microsoft.com/v1.0/groups/${groupId}/events/${ms_group_event_id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          resultados.grupo = { ok: true };
+        } else {
+          resultados.grupo = { skipped: true, motivo: "sin grupo M365 o token de aplicación" };
+        }
+      } else {
+        resultados.grupo = { skipped: true, motivo: "sin ms_group_event_id o proyecto_id" };
+      }
 
-      // No revisamos el resultado: si el evento ya no existía (por ejemplo,
-      // alguien lo borró a mano en Outlook), el resultado que nos importa
-      // (que no quede el evento) ya se cumple igual.
-      await fetch(`https://graph.microsoft.com/v1.0/me/events/${outlook_event_id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      return jsonResponse({ ok: true });
+      return jsonResponse({ ok: true, ...resultados });
     }
 
     if (accion === "upsert") {
@@ -189,7 +325,9 @@ Deno.serve(async (req) => {
 
       const { data: tarea, error: tareaError } = await supabaseAdmin
         .from("tareas")
-        .select("id, titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, outlook_event_id, proyecto_id")
+        .select(
+          "id, titulo, descripcion, fecha_inicio, fecha_termino, responsable_id, outlook_event_id, ms_group_event_id, proyecto_id"
+        )
         .eq("id", tarea_id)
         .maybeSingle();
 
@@ -199,9 +337,6 @@ Deno.serve(async (req) => {
       if (!tarea) {
         return jsonResponse({ skipped: true, motivo: "no se encontró la tarea", tarea_id_recibido: tarea_id });
       }
-      if (!tarea.responsable_id) {
-        return jsonResponse({ skipped: true, motivo: "la tarea no tiene responsable_id", tarea });
-      }
 
       const fechaInicio = tarea.fecha_inicio || tarea.fecha_termino;
       const fechaTermino = tarea.fecha_termino || tarea.fecha_inicio;
@@ -209,48 +344,14 @@ Deno.serve(async (req) => {
         return jsonResponse({ skipped: true, motivo: "sin fechas" });
       }
 
-      const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, tarea.responsable_id);
-      if (!accessToken) {
-        return jsonResponse({ skipped: true, motivo: "responsable sin conexión de Outlook válida", responsable_id: tarea.responsable_id });
-      }
-
       const infoProyecto = await obtenerInfoProyecto(supabaseAdmin, tarea.proyecto_id);
 
-      const eventoBody = {
-        subject: tarea.titulo,
-        body: { contentType: "text", content: (tarea.descripcion || "") + infoProyecto },
-        isAllDay: true,
-        start: { dateTime: `${fechaInicio}T00:00:00`, timeZone: "UTC" },
-        end: { dateTime: `${sumarUnDia(fechaTermino)}T00:00:00`, timeZone: "UTC" },
-      };
+      const [personal, grupo] = await Promise.all([
+        sincronizarCalendarioPersonal(supabaseAdmin, tarea, infoProyecto),
+        sincronizarCalendarioGrupo(supabaseAdmin, tarea, infoProyecto),
+      ]);
 
-      const graphUrl = tarea.outlook_event_id
-        ? `https://graph.microsoft.com/v1.0/me/events/${tarea.outlook_event_id}`
-        : `https://graph.microsoft.com/v1.0/me/events`;
-
-      const graphResp = await fetch(graphUrl, {
-        method: tarea.outlook_event_id ? "PATCH" : "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventoBody),
-      });
-
-      const graphData = await graphResp.json();
-
-      if (!graphResp.ok) {
-        return jsonResponse(
-          { error: graphData.error?.message || "Error al sincronizar el evento con Outlook" },
-          400
-        );
-      }
-
-      if (!tarea.outlook_event_id) {
-        await supabaseAdmin.from("tareas").update({ outlook_event_id: graphData.id }).eq("id", tarea.id);
-      }
-
-      return jsonResponse({ ok: true });
+      return jsonResponse({ ok: true, personal, grupo });
     }
 
     return jsonResponse({ error: "accion inválida" }, 400);

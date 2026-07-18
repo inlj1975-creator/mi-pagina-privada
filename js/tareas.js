@@ -166,7 +166,7 @@ async function loadTareas() {
 
   const { data, error } = await window.supabaseClient
     .from("tareas")
-    .select("id, titulo, descripcion, proyecto_id, responsable_id, responsable_nombre, estado, fecha_inicio, fecha_termino, outlook_event_id")
+    .select("id, titulo, descripcion, proyecto_id, responsable_id, responsable_nombre, estado, fecha_inicio, fecha_termino, outlook_event_id, ms_group_event_id")
     .order("fecha_inicio", { ascending: false });
 
   if (error) {
@@ -215,16 +215,18 @@ async function deleteTarea(tarea) {
   }
 
   // Se manda con los datos de ANTES de borrar (ya no se puede volver a leer
-  // outlook_event_id una vez que la fila desapareció). Si no había evento
-  // sincronizado o el responsable nunca conectó Outlook, la función lo
-  // ignora sola (accion "delete" con datos faltantes -> skipped).
-  if (tarea.outlook_event_id && tarea.responsable_id) {
+  // outlook_event_id/ms_group_event_id una vez que la fila desapareció). Si
+  // no había nada que borrar en alguno de los dos calendarios (personal o
+  // del grupo), la función lo ignora sola.
+  if ((tarea.outlook_event_id && tarea.responsable_id) || (tarea.ms_group_event_id && tarea.proyecto_id)) {
     try {
       await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
         body: {
           accion: "delete",
           outlook_event_id: tarea.outlook_event_id,
           responsable_id: tarea.responsable_id,
+          ms_group_event_id: tarea.ms_group_event_id,
+          proyecto_id: tarea.proyecto_id,
         },
       });
     } catch (e) {
@@ -282,6 +284,20 @@ form.addEventListener("submit", async (event) => {
       if (syncError) console.error("ms-sync-evento-tarea:", syncError);
     } catch (e) {
       console.error("ms-sync-evento-tarea:", e);
+    }
+  }
+
+  // Grupo M365 del proyecto: agrega al responsable de esta tarea como
+  // miembro (aditivo, nunca saca a nadie). El backend decide si el
+  // proyecto ya tiene grupo o hay que crearlo.
+  if (payload.proyecto_id) {
+    try {
+      const { error: grupoError } = await window.supabaseClient.functions.invoke("ms-sync-grupo-proyecto", {
+        body: { proyecto_id: payload.proyecto_id, perfil_id_extra: payload.responsable_id },
+      });
+      if (grupoError) console.error("ms-sync-grupo-proyecto:", grupoError);
+    } catch (e) {
+      console.error("ms-sync-grupo-proyecto:", e);
     }
   }
 

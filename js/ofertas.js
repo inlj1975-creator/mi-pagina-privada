@@ -567,7 +567,7 @@ async function convertirOfertaEnProyecto(id) {
     return;
   }
 
-  const { error } = await window.supabaseClient.rpc("convertir_oferta_en_proyecto", {
+  const { data, error } = await window.supabaseClient.rpc("convertir_oferta_en_proyecto", {
     oferta_id: id,
   });
 
@@ -577,6 +577,19 @@ async function convertirOfertaEnProyecto(id) {
   if (error) {
     formError.textContent = error.message;
     return;
+  }
+
+  // "data" es el uuid del proyecto nuevo (la función SQL declara
+  // "returns uuid"). Fire-and-forget, mismo patrón que projects.js/tareas.js:
+  // un problema de Microsoft Graph nunca debe impedir la conversión, que ya
+  // se hizo arriba.
+  try {
+    const { error: grupoError } = await window.supabaseClient.functions.invoke("ms-sync-grupo-proyecto", {
+      body: { proyecto_id: data },
+    });
+    if (grupoError) console.error("ms-sync-grupo-proyecto:", grupoError);
+  } catch (e) {
+    console.error("ms-sync-grupo-proyecto:", e);
   }
 
   loadOfertas();
