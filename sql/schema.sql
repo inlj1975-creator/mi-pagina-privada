@@ -728,3 +728,69 @@ create policy "Admin, director o gerente pueden borrar detalle_ofertas"
 grant select, insert, update, delete on public.detalle_ofertas to authenticated;
 -- service_role queda cubierto solo por el "alter default privileges" de la
 -- sección 21; no hace falta GRANT aparte (tablas creadas después de esa migración).
+
+-- 24) Fase 1 de "Proyectos ampliados": nuevos campos de negocio (comercial,
+-- fechas, contacto, rentabilidad). La Fase 2 (Grupo de Microsoft 365 por
+-- proyecto) queda fuera de este cambio, para más adelante.
+--
+-- a) Estado de proyectos: pasa de 3 valores libres (sin check, valores en
+--    uso: 'Pendiente'/'En curso'/'Completado') a 2 valores fijos con check,
+--    igual que ofertas/facturas/tareas. Los datos se migran ANTES de crear
+--    el constraint: si se creara antes, las filas viejas con 'Pendiente' o
+--    'Completado' lo violarían y el ALTER TABLE fallaría.
+update proyectos set estado = 'Abierto' where estado in ('Pendiente', 'En curso');
+update proyectos set estado = 'Cerrado' where estado = 'Completado';
+
+alter table proyectos alter column estado set default 'Abierto';
+
+alter table proyectos
+  add constraint proyectos_estado_check check (estado in ('Abierto', 'Cerrado'));
+
+-- b) Campos nuevos, todos opcionales (nullable, sin default). Tienen que
+--    quedar nullable: convertir_oferta_en_proyecto() solo inserta
+--    nombre/cliente_id/oferta_id, así que cualquier columna NOT NULL sin
+--    default rompería esa función.
+alter table proyectos
+  add column if not exists tipo_proyecto text,
+  add column if not exists filial_cliente text,
+  add column if not exists responsable_comercial_id uuid references public.perfiles(id) on delete set null,
+  add column if not exists project_manager_id uuid references public.perfiles(id) on delete set null,
+  add column if not exists contacto_nombre text,
+  add column if not exists contacto_email text,
+  add column if not exists contacto_telefono text,
+  add column if not exists frecuencia_comunicacion text,
+  add column if not exists fecha_kickoff date,
+  add column if not exists plazo_dias integer,
+  add column if not exists valor_venta numeric(12, 2),
+  add column if not exists valor_costo numeric(12, 2),
+  add column if not exists direccion_instalacion text,
+  add column if not exists fecha_inicio_real date,
+  add column if not exists fecha_termino_real date,
+  add column if not exists cond_pago text;
+
+-- c) Checks de valores fijos, mismo estilo que ofertas/facturas/tareas. Al
+--    ser columnas nullable, "x in (...)" con x = NULL da NULL (no false), y
+--    Postgres trata un check en NULL como cumplido — mismo razonamiento que
+--    el check de fechas de tareas (sección 12): no hace falta un "is null or"
+--    explícito, una fila sin tipo_proyecto/frecuencia_comunicacion pasa igual.
+alter table proyectos
+  add constraint proyectos_tipo_proyecto_check
+  check (tipo_proyecto in ('Venta', 'Importación', 'Instalación', 'Llave en mano'));
+
+alter table proyectos
+  add constraint proyectos_frecuencia_comunicacion_check
+  check (frecuencia_comunicacion in ('Semanal', 'Quincenal', 'Mensual'));
+
+-- d) Rentabilidad esperada: columna calculada (mismo patrón que
+--    ofertas.nivel_aprobacion, sección 14), para que nunca se desincronice
+--    de valor_venta/valor_costo. "case when valor_venta > 0" evita división
+--    por cero; si valor_venta es 0, negativo o NULL, o si valor_costo es
+--    NULL, el resultado queda NULL (no calculable).
+alter table proyectos
+  add column if not exists rentabilidad_esperada numeric
+  generated always as (
+    case
+      when valor_venta > 0 then round(((valor_venta - valor_costo) / valor_venta) * 100, 2)
+      else null
+    end
+  ) stored;

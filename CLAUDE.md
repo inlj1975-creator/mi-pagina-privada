@@ -36,7 +36,22 @@ Postgres + RLS. En el navegador solo se usa la **publishable key**
 
 ## Entidades actuales
 
-- **Proyectos**: nombre, descripción, estado, fecha, cliente (opcional).
+- **Proyectos**: nombre, descripción, estado (`Abierto`/`Cerrado`, con
+  check; antes 3 valores libres sin check — `Pendiente`/`En curso` →
+  `Abierto`, `Completado` → `Cerrado`, migrados en la Fase 1 de ampliación),
+  fecha, cliente (opcional). Fase 1 (ampliación de la ficha de proyecto):
+  tipo_proyecto (check: Venta / Importación / Instalación / Llave en mano),
+  filial_cliente (texto libre, sin tabla ni FK), responsable_comercial_id y
+  project_manager_id (FK → perfiles, on delete set null),
+  contacto_nombre/contacto_email/contacto_telefono (texto libre del
+  proyecto, sin FK a perfiles ni clientes), frecuencia_comunicacion (check:
+  Semanal / Quincenal / Mensual), fecha_kickoff, plazo_dias, valor_venta y
+  valor_costo (`numeric(12,2)`), direccion_instalacion, fecha_inicio_real,
+  fecha_termino_real, cond_pago (texto libre). rentabilidad_esperada es una
+  columna calculada (`(valor_venta - valor_costo) / valor_venta * 100`,
+  redondeada a 2 decimales; `NULL` si valor_venta no es mayor que 0), mismo
+  patrón que `ofertas.nivel_aprobacion`. Pendiente: Fase 2 (crear un Grupo
+  de Microsoft 365 por proyecto, con carpetas/eventos/miembros).
 - **Clientes**: nombre, email, teléfono, empresa, notas.
 - **Proveedores**: nombre, email, teléfono, rubro, notas. Mismo modelo que Clientes.
 - **Ofertas**: título, monto (`numeric(12,2)`), cliente (opcional), estado,

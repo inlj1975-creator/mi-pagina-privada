@@ -12,15 +12,33 @@ const descripcionInput = document.getElementById("descripcion");
 const estadoInput = document.getElementById("estado");
 const fechaInput = document.getElementById("fecha");
 const clienteInput = document.getElementById("cliente");
+const tipoProyectoInput = document.getElementById("tipo-proyecto");
+const filialClienteInput = document.getElementById("filial-cliente");
+const responsableComercialInput = document.getElementById("responsable-comercial");
+const projectManagerInput = document.getElementById("project-manager");
+const contactoNombreInput = document.getElementById("contacto-nombre");
+const contactoEmailInput = document.getElementById("contacto-email");
+const contactoTelefonoInput = document.getElementById("contacto-telefono");
+const frecuenciaComunicacionInput = document.getElementById("frecuencia-comunicacion");
+const fechaKickoffInput = document.getElementById("fecha-kickoff");
+const plazoDiasInput = document.getElementById("plazo-dias");
+const valorVentaInput = document.getElementById("valor-venta");
+const valorCostoInput = document.getElementById("valor-costo");
+const direccionInstalacionInput = document.getElementById("direccion-instalacion");
+const fechaInicioRealInput = document.getElementById("fecha-inicio-real");
+const fechaTerminoRealInput = document.getElementById("fecha-termino-real");
+const condPagoInput = document.getElementById("cond-pago");
 
 // Mapa id -> nombre de los clientes, para mostrar el nombre en la tabla
 // sin tener que volver a consultar la base de datos por cada fila.
 let clientesPorId = new Map();
 
+// Mapa id -> email de perfiles, para los selects de Responsable comercial
+// y Project Manager (mismo patrón que loadPerfilesOptions en ofertas.js).
+let perfilesPorId = new Map();
+
 function estadoClass(estado) {
-  if (estado === "En curso") return "estado-en-curso";
-  if (estado === "Completado") return "estado-completado";
-  return "estado-pendiente";
+  return estado === "Cerrado" ? "estado-cerrado" : "estado-abierto";
 }
 
 function clearForm() {
@@ -121,6 +139,36 @@ async function loadClienteOptions() {
   }
 }
 
+async function loadPerfilesOptions() {
+  const session = await ensureSession();
+  if (!session) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("perfiles")
+    .select("id, email")
+    .order("email", { ascending: true });
+
+  if (error) return;
+
+  perfilesPorId = new Map(data.map((p) => [p.id, p.email]));
+
+  for (const select of [responsableComercialInput, projectManagerInput]) {
+    select.innerHTML = "";
+
+    const sinOpcion = document.createElement("option");
+    sinOpcion.value = "";
+    sinOpcion.textContent = "(sin asignar)";
+    select.appendChild(sinOpcion);
+
+    for (const perfil of data) {
+      const option = document.createElement("option");
+      option.value = perfil.id;
+      option.textContent = perfil.email;
+      select.appendChild(option);
+    }
+  }
+}
+
 async function loadProjects() {
   const session = await ensureSession();
   if (!session) return;
@@ -145,6 +193,22 @@ function startEdit(project) {
   estadoInput.value = project.estado;
   fechaInput.value = project.fecha || "";
   clienteInput.value = project.cliente_id || "";
+  tipoProyectoInput.value = project.tipo_proyecto || "";
+  filialClienteInput.value = project.filial_cliente || "";
+  responsableComercialInput.value = project.responsable_comercial_id || "";
+  projectManagerInput.value = project.project_manager_id || "";
+  contactoNombreInput.value = project.contacto_nombre || "";
+  contactoEmailInput.value = project.contacto_email || "";
+  contactoTelefonoInput.value = project.contacto_telefono || "";
+  frecuenciaComunicacionInput.value = project.frecuencia_comunicacion || "";
+  fechaKickoffInput.value = project.fecha_kickoff || "";
+  plazoDiasInput.value = project.plazo_dias ?? "";
+  valorVentaInput.value = project.valor_venta ?? "";
+  valorCostoInput.value = project.valor_costo ?? "";
+  direccionInstalacionInput.value = project.direccion_instalacion || "";
+  fechaInicioRealInput.value = project.fecha_inicio_real || "";
+  fechaTerminoRealInput.value = project.fecha_termino_real || "";
+  condPagoInput.value = project.cond_pago || "";
 
   submitButton.textContent = "Guardar cambios";
   cancelEditButton.style.display = "inline-block";
@@ -189,6 +253,22 @@ form.addEventListener("submit", async (event) => {
     estado: estadoInput.value,
     fecha: fechaInput.value,
     cliente_id: clienteInput.value || null,
+    tipo_proyecto: tipoProyectoInput.value || null,
+    filial_cliente: filialClienteInput.value || null,
+    responsable_comercial_id: responsableComercialInput.value || null,
+    project_manager_id: projectManagerInput.value || null,
+    contacto_nombre: contactoNombreInput.value || null,
+    contacto_email: contactoEmailInput.value || null,
+    contacto_telefono: contactoTelefonoInput.value || null,
+    frecuencia_comunicacion: frecuenciaComunicacionInput.value || null,
+    fecha_kickoff: fechaKickoffInput.value || null,
+    plazo_dias: plazoDiasInput.value ? Number(plazoDiasInput.value) : null,
+    valor_venta: valorVentaInput.value ? Number(valorVentaInput.value) : null,
+    valor_costo: valorCostoInput.value ? Number(valorCostoInput.value) : null,
+    direccion_instalacion: direccionInstalacionInput.value || null,
+    fecha_inicio_real: fechaInicioRealInput.value || null,
+    fecha_termino_real: fechaTerminoRealInput.value || null,
+    cond_pago: condPagoInput.value || null,
   };
 
   const editingId = idInput.value;
@@ -211,6 +291,7 @@ cancelEditButton.addEventListener("click", clearForm);
 async function init() {
   await window.authReady;
   await loadClienteOptions();
+  await loadPerfilesOptions();
   await loadProjects();
 }
 

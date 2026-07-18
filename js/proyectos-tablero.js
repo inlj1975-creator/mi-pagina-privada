@@ -10,9 +10,7 @@ async function ensureSession() {
 }
 
 function badgeClass(estado) {
-  if (estado === "En curso") return "badge-en-curso";
-  if (estado === "Completado") return "badge-completado";
-  return "badge-pendiente";
+  return estado === "Cerrado" ? "badge-cerrado" : "badge-abierto";
 }
 
 function renderTablero(proyectos, clientesPorId, tareasPorProyecto, facturasPorProyecto) {
