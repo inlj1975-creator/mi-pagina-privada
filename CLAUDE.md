@@ -328,30 +328,38 @@ cambios antes de que sean visibles en el sitio real, existe una rama
 
 `js/config.js` diverge a propósito entre `main` y `staging` (Supabase y
 `MS_REDIRECT_URI` distintos en cada rama) — es el único archivo del repo
-donde eso pasa. Para que un merge en cualquier dirección no lo pise por
-accidente, `.gitattributes` marca ese archivo con `merge=ours`. Esto
-requiere, **una sola vez por clon/máquina**:
-```
-git config merge.ours.driver true
-```
-**Importante:** el merge driver solo se activa en un merge de verdad (con
-commit de merge) — si `main` no tiene ningún commit propio desde que se
-creó `staging`, git hace **fast-forward** en vez de merge, y un
-fast-forward no dispara ningún merge driver. Ya pasó una vez: promover
-`staging` a `main` pisó `config.js` de producción con los valores de
-staging, detectado antes de pushear por suerte. Por eso el merge de
-promoción siempre tiene que forzarse con `--no-ff` (ver flujo de trabajo
-abajo), nunca un `git merge staging` a secas.
+donde eso pasa. `.gitattributes` lo marca con `merge=ours` (requiere,
+**una sola vez por clon/máquina**, `git config merge.ours.driver true`),
+pero **este driver casi nunca protege nada en la práctica**: Git solo lo
+invoca cuando los DOS lados de un merge cambiaron el archivo desde el
+ancestro común. Como `main` nunca toca `config.js` por su cuenta (solo lo
+cambia `staging`), Git ve ese cambio como "sin conflicto" y aplica el de
+la otra rama directo, sin pasar nunca por el driver — confirmado
+reproduciendo el merge en una rama descartable. Esto ya pisó `config.js`
+de producción con los valores de staging **tres veces** (los tres commits
+"Corrige config.js..." del historial), con o sin `--no-ff`.
 
-Como red de seguridad extra (por si en algún clon falta ese paso o se
-usa un merge normal por error), después de cualquier merge entre `main`
-y `staging` conviene confirmar a ojo que `js/config.js` sigue apuntando
-al Supabase correcto (prod termina en `zurfciuqrsnlcafdatzf`).
+**La protección real es el hook `post-merge`** (`.githooks/post-merge`,
+versionado en el repo). Después de CUALQUIER merge (en cualquier
+dirección), compara `config.js` contra lo que la rama tenía antes de
+mergear (`ORIG_HEAD`) y, si cambió, lo restaura y lo deja `staged` — sin
+commitear solo, para revisarlo antes de confirmar. Requiere, **una sola
+vez por clon/máquina**:
+```
+git config core.hooksPath .githooks
+```
+(además del `git config merge.ours.driver true` de arriba, que se deja
+por las dudas pero no es la protección principal). Como red de seguridad
+extra, después de cualquier merge entre `main` y `staging` conviene
+igual confirmar a ojo que `js/config.js` apunta al Supabase correcto
+(prod termina en `zurfciuqrsnlcafdatzf`).
 
 Flujo de trabajo: se prueba en `staging` (viendo los cambios en la URL de
 Cloudflare Pages) y, cuando está conforme, se promueve con
-`git checkout main && git merge --no-ff staging` seguido del chequeo de
-`config.js` de arriba y `git push origin main`.
+`git checkout main && git merge --no-ff staging` (el `--no-ff` sigue
+siendo buena práctica para dejar rastro explícito del merge, aunque ya no
+sea la única defensa de `config.js`), seguido del chequeo de arriba y
+`git push origin main`.
 
 ## Patrón de seguridad al agregar una entidad nueva
 
