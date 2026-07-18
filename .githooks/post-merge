@@ -23,8 +23,12 @@ if ! git rev-parse -q --verify ORIG_HEAD >/dev/null 2>&1; then
 fi
 
 ANTES=$(git rev-parse ORIG_HEAD)
-CONFIG_ANTES=$(git show "$ANTES:js/config.js" 2>/dev/null) || exit 0
-CONFIG_AHORA=$(cat js/config.js 2>/dev/null)
+# Se normalizan los \r antes de comparar: el archivo en disco puede tener
+# CRLF (core.autocrlf) mientras que el contenido guardado en el commit
+# siempre es LF — sin esto, la comparación daría "distinto" en cada merge
+# aunque el valor real no haya cambiado.
+CONFIG_ANTES=$(git show "$ANTES:js/config.js" 2>/dev/null | tr -d '\r') || exit 0
+CONFIG_AHORA=$(cat js/config.js 2>/dev/null | tr -d '\r')
 
 if [ "$CONFIG_ANTES" != "$CONFIG_AHORA" ]; then
   git show "$ANTES:js/config.js" > js/config.js
