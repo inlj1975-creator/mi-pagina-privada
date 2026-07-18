@@ -495,3 +495,13 @@ sea la única defensa de `config.js`), seguido del chequeo de arriba y
   tokens) sigue en texto plano — no rompe nada (se trata como "sin
   conexión válida"), pero esa persona debería reconectar desde "Mi
   cuenta" cuando pueda.
+- **Fase 2 (Grupo M365 por proyecto) — pendiente de probar en staging**:
+  código ya corregido y desplegado (ver sección "Grupo de Microsoft 365
+  por proyecto"), pero falta el admin consent del permiso delegado
+  `Group.ReadWrite.All` en Azure (ya agregado, esperando aprobación de un
+  admin del tenant). Apenas se apruebe: reconectar Outlook del usuario de
+  prueba (scope nuevo, el token viejo no alcanza) y repetir la
+  verificación del calendario del grupo — hay un proyecto de prueba ya
+  creado (`ms_group_id` `c4e24265-2c41-4527-9e24-3a73fb734a9d`) para no
+  tener que armar el caso de cero. Si todo sale bien en staging, replicar
+  SQL + despliegue de Edge Functions + permiso de Azure en producción.
