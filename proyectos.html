@@ -27,9 +27,8 @@
         <div class="field">
           <label for="estado">Estado</label>
           <select id="estado" required>
-            <option value="Pendiente">Pendiente</option>
-            <option value="En curso">En curso</option>
-            <option value="Completado">Completado</option>
+            <option value="Abierto">Abierto</option>
+            <option value="Cerrado">Cerrado</option>
           </select>
         </div>
         <div class="field">
@@ -41,6 +40,93 @@
           <select id="cliente">
             <option value="">(sin cliente)</option>
           </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="tipo-proyecto">Tipo de proyecto</label>
+          <select id="tipo-proyecto">
+            <option value="">(sin tipo)</option>
+            <option value="Venta">Venta</option>
+            <option value="Importación">Importación</option>
+            <option value="Instalación">Instalación</option>
+            <option value="Llave en mano">Llave en mano</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filial-cliente">Filial del cliente</label>
+          <input type="text" id="filial-cliente" />
+        </div>
+        <div class="field">
+          <label for="responsable-comercial">Responsable comercial</label>
+          <select id="responsable-comercial">
+            <option value="">(sin asignar)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="project-manager">Project Manager</label>
+          <select id="project-manager">
+            <option value="">(sin asignar)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="contacto-nombre">Contacto del proyecto</label>
+          <input type="text" id="contacto-nombre" />
+        </div>
+        <div class="field">
+          <label for="contacto-email">Email de contacto</label>
+          <input type="email" id="contacto-email" />
+        </div>
+        <div class="field">
+          <label for="contacto-telefono">Teléfono de contacto</label>
+          <input type="tel" id="contacto-telefono" />
+        </div>
+        <div class="field">
+          <label for="frecuencia-comunicacion">Frecuencia de comunicación</label>
+          <select id="frecuencia-comunicacion">
+            <option value="">(sin definir)</option>
+            <option value="Semanal">Semanal</option>
+            <option value="Quincenal">Quincenal</option>
+            <option value="Mensual">Mensual</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="fecha-kickoff">Fecha de kickoff</label>
+          <input type="date" id="fecha-kickoff" />
+        </div>
+        <div class="field">
+          <label for="plazo-dias">Plazo total (días)</label>
+          <input type="number" id="plazo-dias" min="0" step="1" />
+        </div>
+        <div class="field">
+          <label for="valor-venta">Valor de venta</label>
+          <input type="number" id="valor-venta" min="0" step="0.01" />
+        </div>
+        <div class="field">
+          <label for="valor-costo">Valor de costo</label>
+          <input type="number" id="valor-costo" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="direccion-instalacion">Dirección de instalación</label>
+          <input type="text" id="direccion-instalacion" />
+        </div>
+        <div class="field">
+          <label for="fecha-inicio-real">Fecha de inicio real</label>
+          <input type="date" id="fecha-inicio-real" />
+        </div>
+        <div class="field">
+          <label for="fecha-termino-real">Fecha de término real</label>
+          <input type="date" id="fecha-termino-real" />
+        </div>
+        <div class="field">
+          <label for="cond-pago">Condición de pago</label>
+          <input type="text" id="cond-pago" placeholder="Ej: 60 días" />
         </div>
       </div>
       <div class="field">

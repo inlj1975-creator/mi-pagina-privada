@@ -8,6 +8,23 @@ const nombreEl = document.getElementById("proyecto-nombre");
 const descripcionEl = document.getElementById("proyecto-descripcion");
 const estadoEl = document.getElementById("proyecto-estado");
 const fechaEl = document.getElementById("proyecto-fecha");
+const tipoEl = document.getElementById("proyecto-tipo");
+const filialClienteEl = document.getElementById("proyecto-filial-cliente");
+const responsableComercialEl = document.getElementById("proyecto-responsable-comercial");
+const pmEl = document.getElementById("proyecto-pm");
+const valorVentaEl = document.getElementById("proyecto-valor-venta");
+const valorCostoEl = document.getElementById("proyecto-valor-costo");
+const rentabilidadEl = document.getElementById("proyecto-rentabilidad");
+const condPagoEl = document.getElementById("proyecto-cond-pago");
+const fechaKickoffEl = document.getElementById("proyecto-fecha-kickoff");
+const plazoDiasEl = document.getElementById("proyecto-plazo-dias");
+const fechaInicioRealEl = document.getElementById("proyecto-fecha-inicio-real");
+const fechaTerminoRealEl = document.getElementById("proyecto-fecha-termino-real");
+const contactoNombreEl = document.getElementById("proyecto-contacto-nombre");
+const contactoEmailEl = document.getElementById("proyecto-contacto-email");
+const contactoTelefonoEl = document.getElementById("proyecto-contacto-telefono");
+const frecuenciaEl = document.getElementById("proyecto-frecuencia");
+const direccionInstalacionEl = document.getElementById("proyecto-direccion-instalacion");
 
 const clienteDetalle = document.getElementById("cliente-detalle");
 const sinCliente = document.getElementById("sin-cliente");
@@ -44,11 +61,33 @@ function mostrarError(mensaje) {
   detalle.style.display = "none";
 }
 
-function renderProyecto(proyecto) {
+function renderProyecto(proyecto, perfilesPorId) {
   nombreEl.textContent = proyecto.nombre;
   descripcionEl.textContent = proyecto.descripcion || "";
   estadoEl.textContent = proyecto.estado;
   fechaEl.textContent = proyecto.fecha || "";
+
+  tipoEl.textContent = proyecto.tipo_proyecto || "(sin definir)";
+  filialClienteEl.textContent = proyecto.filial_cliente || "";
+
+  responsableComercialEl.textContent = perfilesPorId.get(proyecto.responsable_comercial_id) || "(sin asignar)";
+  pmEl.textContent = perfilesPorId.get(proyecto.project_manager_id) || "(sin asignar)";
+  valorVentaEl.textContent = proyecto.valor_venta != null ? proyecto.valor_venta : "";
+  valorCostoEl.textContent = proyecto.valor_costo != null ? proyecto.valor_costo : "";
+  rentabilidadEl.textContent = proyecto.rentabilidad_esperada != null ? proyecto.rentabilidad_esperada + "%" : "(no calculable)";
+  condPagoEl.textContent = proyecto.cond_pago || "";
+
+  fechaKickoffEl.textContent = proyecto.fecha_kickoff || "";
+  plazoDiasEl.textContent = proyecto.plazo_dias != null ? proyecto.plazo_dias + " días" : "";
+  fechaInicioRealEl.textContent = proyecto.fecha_inicio_real || "";
+  fechaTerminoRealEl.textContent = proyecto.fecha_termino_real || "";
+
+  contactoNombreEl.textContent = proyecto.contacto_nombre || "";
+  contactoEmailEl.textContent = proyecto.contacto_email || "";
+  contactoTelefonoEl.textContent = proyecto.contacto_telefono || "";
+  frecuenciaEl.textContent = proyecto.frecuencia_comunicacion || "";
+
+  direccionInstalacionEl.textContent = proyecto.direccion_instalacion || "";
 }
 
 function renderCliente(cliente) {
@@ -273,7 +312,10 @@ async function init() {
     return;
   }
 
-  renderProyecto(proyecto);
+  const { data: perfiles } = await window.supabaseClient.from("perfiles").select("id, email");
+  const perfilesPorId = new Map((perfiles || []).map((p) => [p.id, p.email]));
+
+  renderProyecto(proyecto, perfilesPorId);
 
   if (proyecto.cliente_id) {
     const { data: cliente } = await window.supabaseClient
