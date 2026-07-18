@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
           grant_type: "authorization_code",
           code,
           redirect_uri,
-          scope: "offline_access Calendars.ReadWrite",
+          scope: "offline_access Calendars.ReadWrite Group.ReadWrite.All",
         }),
       }
     );

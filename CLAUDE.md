@@ -334,44 +334,70 @@ el campo `errores` de la respuesta) sin bloquear al resto.
 en la raíz del drive (SharePoint) del grupo, solo en el momento en que se
 crea el grupo (no se reintentan después si fallan parcialmente).
 
-**Calendario**: cada tarea sincroniza su evento en DOS calendarios
-independientes — el personal del responsable (`tareas.outlook_event_id`,
-como antes) y el compartido del grupo del proyecto
-(`tareas.ms_group_event_id`, columna nueva). Las dos sync conviven; si
-falla una, la otra se intenta igual (`ms-sync-evento-tarea` devuelve
-`{ personal: {...}, grupo: {...} }`).
+**Calendario**: cada tarea sincroniza su evento en DOS calendarios — el
+personal del responsable (`tareas.outlook_event_id`) y el compartido del
+grupo del proyecto (`tareas.ms_group_event_id`, columna nueva). Las dos
+usan la **misma conexión OAuth delegada del responsable** — Microsoft
+Graph no soporta escribir en el calendario de un grupo con un permiso de
+aplicación (confirmado con la documentación oficial: `POST
+/groups/{id}/events` dice explícitamente "Application: Not supported"),
+solo con un permiso delegado de alguien que sea miembro del grupo. Por eso
+acá **no hay independencia** entre ambas sync (a diferencia del resto de
+la integración de Outlook): si el responsable no conectó su Outlook,
+ninguna de las dos puede escribir nada (`ms-sync-evento-tarea` devuelve
+`{ personal: {skipped}, grupo: {skipped} }` en ese caso).
 
-**Email de avisos**: `ms-enviar-notificacion` intenta mandar primero "como"
-el grupo del proyecto (`/groups/{id}/sendMail`, permiso de aplicación); si
-el proyecto no tiene grupo o ese envío falla, cae de vuelta a
-`MS_REMITENTE_EMAIL` (comportamiento de siempre) — nunca queda una
-notificación sin mandarse por este cambio.
+En `js/tareas.js`, la sync de membresía (`ms-sync-grupo-proyecto`) se
+llama **antes** que la de calendario (`ms-sync-evento-tarea`), a
+propósito: el responsable tiene que ya ser miembro del grupo para que
+Graph le deje escribir en su calendario compartido. La membresía puede
+tardar unos segundos en propagarse del lado de Microsoft — el primer
+guardado justo después de agregar a alguien nuevo al grupo podría fallar
+igual; un segundo guardado (editar la tarea de nuevo) debería funcionar
+una vez que propague. No hay reintento automático para esto.
+
+**Email de avisos**: sigue siendo siempre desde la casilla fija
+`MS_REMITENTE_EMAIL`, sin cambios respecto a antes de la Fase 2. Se probó
+mandar "como" el grupo del proyecto, pero `POST /groups/{id}/sendMail` **no
+existe** en Microsoft Graph — un grupo no tiene una acción de "enviar
+mail" propia (solo Conversations/Threads, un mecanismo de lista de correo
+interna, distinto a un mail 1 a 1 a una persona puntual). Se revirtió.
 
 Permisos Graph nuevos (Azure Portal → Entra ID → App registrations →
-Melirrepu → API permissions, todos de tipo **Application** con admin
-consent):
-- `Group.ReadWrite.All` — crear el grupo y agregar miembros.
-- `Files.ReadWrite.All` — crear carpetas en el drive del grupo.
-- `Calendars.ReadWrite` (variante Application; ya existía la Delegated, que
-  sigue usando la sync al calendario personal) — eventos del calendario
-  compartido.
-- `Mail.Send` (Application) ya estaba otorgado y alcanza también para
-  `/groups/{id}/sendMail` — no hace falta nada nuevo para esto.
+Melirrepu → API permissions):
+- `Group.ReadWrite.All` (**Application**, con admin consent) — crear el
+  grupo y agregar miembros (`ms-sync-grupo-proyecto`).
+- `Files.ReadWrite.All` (**Application**, con admin consent) — crear
+  carpetas en el drive del grupo.
+- `Group.ReadWrite.All` (**Delegated**, con admin consent para evitar un
+  prompt de consentimiento por cada empleado) — para que la conexión de
+  Outlook de cada responsable pueda escribir en el calendario del grupo.
+  Va en el scope pedido al conectar Outlook (`js/configuracion.js`) y en
+  los dos intercambios de token (`ms-oauth-exchange`, y el refresh dentro
+  de `ms-sync-evento-tarea`) — los 3 tienen que pedir el mismo scope.
 
 `Group.ReadWrite.All` es un permiso amplio (control sobre todos los grupos
 del tenant, no solo los creados por esta app) — no existe uno más angosto
 en Graph que cubra creación + membresía.
 
+**Usuarios que ya conectaron su Outlook antes de este permiso nuevo deben
+reconectarlo una vez** desde "Mi cuenta" — su token actual no tiene el
+scope `Group.ReadWrite.All`, y un refresh token no puede ampliar permisos
+por su cuenta; hace falta un login nuevo (nueva pantalla de consentimiento).
+Hasta que reconecten, la sync de calendario del grupo para sus tareas
+seguirá devolviendo `skipped`.
+
 **Pasos manuales pendientes del usuario** (nada de esto lo puede hacer
 Claude Code):
-1. Agregar los 3 permisos de aplicación de arriba en Azure Portal y dar
-   admin consent.
+1. Agregar los 3 permisos de arriba en Azure Portal y dar admin consent.
 2. Pegar la sección 25 de `sql/schema.sql` en el editor SQL de Supabase
    (staging primero, después prod).
 3. Desplegar a mano, vía el editor del dashboard de Supabase (Edge
    Functions → Via Editor): la función nueva `ms-sync-grupo-proyecto` y los
    cambios de código en `ms-sync-evento-tarea` y `ms-enviar-notificacion`
    (staging primero, después prod).
+4. Reconectar Outlook (una vez) para cualquier usuario que ya lo hubiera
+   conectado antes de este cambio.
 
 ## Ambiente de staging
 

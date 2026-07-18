@@ -53,7 +53,7 @@ connectButton.addEventListener("click", () => {
     response_type: "code",
     redirect_uri: MS_REDIRECT_URI,
     response_mode: "query",
-    scope: "offline_access Calendars.ReadWrite",
+    scope: "offline_access Calendars.ReadWrite Group.ReadWrite.All",
     state,
   });
 

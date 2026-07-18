@@ -1,17 +1,21 @@
 // Crea/actualiza/borra el evento de Outlook correspondiente a una tarea, en
-// DOS calendarios independientes: (a) el calendario PERSONAL del
-// responsable (endpoint delegado /me/events, sync original) y (b) el
-// calendario COMPARTIDO del Grupo M365 del proyecto de la tarea (endpoint
-// de aplicación /groups/{id}/events, agregado en la Fase 2 de "Proyectos
-// ampliados"). Las dos sync son INDEPENDIENTES entre sí: si el responsable
-// no conectó su Outlook pero el proyecto sí tiene grupo, la sync de grupo
-// se intenta igual (y viceversa) -- ninguna bloquea a la otra.
+// DOS calendarios: (a) el calendario PERSONAL del responsable (/me/events,
+// sync original) y (b) el calendario COMPARTIDO del Grupo M365 del
+// proyecto de la tarea (/groups/{id}/events, agregado en la Fase 2 de
+// "Proyectos ampliados"). Las dos usan la MISMA conexión OAuth delegada
+// del responsable -- Microsoft Graph no soporta escribir en el calendario
+// de un grupo con un token de aplicación (confirmado con la documentación
+// oficial: "Application: Not supported" para POST /groups/{id}/events),
+// solo con un permiso delegado de alguien que sea miembro del grupo. Por
+// eso, a diferencia de otras partes de esta app, acá NO hay independencia
+// entre ambas sync: si el responsable no conectó su Outlook, ninguna de
+// las dos puede escribir nada.
 //
-// Cualquier problema de cualquiera de las dos (responsable sin conexión,
-// proyecto sin grupo, error de Graph) queda en el campo correspondiente
-// ("personal"/"grupo") de la respuesta, con status 200: la tarea ya se
-// guardó en la app antes de llamar acá, así que un problema del lado de
-// Outlook nunca debe verse como una falla real.
+// Cualquier problema (responsable sin conexión, proyecto sin grupo, error
+// de Graph) queda en el campo correspondiente ("personal"/"grupo") de la
+// respuesta, con status 200: la tarea ya se guardó en la app antes de
+// llamar acá, así que un problema del lado de Outlook nunca debe verse
+// como una falla real.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -129,7 +133,7 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
         client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
         grant_type: "refresh_token",
         refresh_token: refreshTokenActual,
-        scope: "offline_access Calendars.ReadWrite",
+        scope: "offline_access Calendars.ReadWrite Group.ReadWrite.All",
       }),
     }
   );
@@ -147,28 +151,6 @@ async function obtenerAccessTokenResponsable(supabaseAdmin: any, responsableId: 
     })
     .eq("user_id", responsableId);
 
-  return tokenData.access_token;
-}
-
-// Token de aplicación (mismo patrón que ms-enviar-notificacion), para
-// escribir en el calendario COMPARTIDO del grupo sin depender de que nadie
-// haya conectado su Outlook.
-async function obtenerAccessTokenAplicacion() {
-  const resp = await fetch(
-    `https://login.microsoftonline.com/${Deno.env.get("MS_TENANT_ID")}/oauth2/v2.0/token`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: Deno.env.get("MS_CLIENT_ID")!,
-        client_secret: Deno.env.get("MS_CLIENT_SECRET")!,
-        grant_type: "client_credentials",
-        scope: "https://graph.microsoft.com/.default",
-      }),
-    }
-  );
-  const tokenData = await resp.json();
-  if (!resp.ok) return null;
   return tokenData.access_token;
 }
 
@@ -197,10 +179,8 @@ function armarEventoBody(tarea: any, infoProyecto: string) {
 }
 
 // deno-lint-ignore no-explicit-any
-async function sincronizarCalendarioPersonal(supabaseAdmin: any, tarea: any, infoProyecto: string) {
+async function sincronizarCalendarioPersonal(supabaseAdmin: any, tarea: any, infoProyecto: string, accessToken: string | null) {
   if (!tarea.responsable_id) return { skipped: true, motivo: "la tarea no tiene responsable_id" };
-
-  const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, tarea.responsable_id);
   if (!accessToken) {
     return { skipped: true, motivo: "responsable sin conexión de Outlook válida" };
   }
@@ -229,12 +209,19 @@ async function sincronizarCalendarioPersonal(supabaseAdmin: any, tarea: any, inf
 }
 
 // deno-lint-ignore no-explicit-any
-async function sincronizarCalendarioGrupo(supabaseAdmin: any, tarea: any, infoProyecto: string) {
+async function sincronizarCalendarioGrupo(supabaseAdmin: any, tarea: any, infoProyecto: string, accessToken: string | null) {
   const groupId = await obtenerGroupIdDeProyecto(supabaseAdmin, tarea.proyecto_id);
   if (!groupId) return { skipped: true, motivo: "el proyecto no tiene Grupo M365" };
 
-  const accessToken = await obtenerAccessTokenAplicacion();
-  if (!accessToken) return { skipped: true, motivo: "no se pudo obtener token de aplicación de Microsoft" };
+  // Microsoft Graph no soporta escribir en el calendario de un grupo con
+  // permiso de aplicación (confirmado con la documentación oficial: POST
+  // /groups/{id}/events dice "Application: Not supported"). Solo funciona
+  // con un permiso delegado de alguien que sea miembro del grupo -- por
+  // eso se reusa la MISMA conexión OAuth del responsable que ya usa el
+  // calendario personal, en vez de un token de aplicación aparte.
+  if (!accessToken) {
+    return { skipped: true, motivo: "responsable sin conexión de Outlook válida (la sync del grupo depende de esa conexión)" };
+  }
 
   const eventoBody = armarEventoBody(tarea, infoProyecto);
   const graphUrl = tarea.ms_group_event_id
@@ -281,37 +268,44 @@ Deno.serve(async (req) => {
     );
 
     if (accion === "delete") {
+      // Un solo token delegado del responsable, reusado para las dos
+      // sync -- Graph no soporta escribir (ni borrar) en el calendario de
+      // un grupo con un token de aplicación, así que ya no hay un token
+      // aparte para esa parte (ver sincronizarCalendarioGrupo).
+      const accessToken = responsable_id
+        ? await obtenerAccessTokenResponsable(supabaseAdmin, responsable_id)
+        : null;
+
       const resultados: Record<string, unknown> = {};
 
-      if (outlook_event_id && responsable_id) {
-        const accessToken = await obtenerAccessTokenResponsable(supabaseAdmin, responsable_id);
-        if (accessToken) {
-          // No revisamos el resultado: si el evento ya no existía (por
-          // ejemplo, alguien lo borró a mano en Outlook), el resultado que
-          // nos importa (que no quede el evento) ya se cumple igual.
-          await fetch(`https://graph.microsoft.com/v1.0/me/events/${outlook_event_id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          resultados.personal = { ok: true };
-        } else {
-          resultados.personal = { skipped: true, motivo: "responsable sin conexión de Outlook válida" };
-        }
+      if (outlook_event_id && accessToken) {
+        // No revisamos el resultado: si el evento ya no existía (por
+        // ejemplo, alguien lo borró a mano en Outlook), el resultado que
+        // nos importa (que no quede el evento) ya se cumple igual.
+        await fetch(`https://graph.microsoft.com/v1.0/me/events/${outlook_event_id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        resultados.personal = { ok: true };
+      } else if (outlook_event_id) {
+        resultados.personal = { skipped: true, motivo: "responsable sin conexión de Outlook válida" };
       } else {
-        resultados.personal = { skipped: true, motivo: "sin outlook_event_id o responsable_id" };
+        resultados.personal = { skipped: true, motivo: "sin outlook_event_id" };
       }
 
       if (ms_group_event_id && proyecto_id) {
         const groupId = await obtenerGroupIdDeProyecto(supabaseAdmin, proyecto_id);
-        const accessToken = groupId ? await obtenerAccessTokenAplicacion() : null;
-        if (accessToken) {
+        if (groupId && accessToken) {
           await fetch(`https://graph.microsoft.com/v1.0/groups/${groupId}/events/${ms_group_event_id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           resultados.grupo = { ok: true };
         } else {
-          resultados.grupo = { skipped: true, motivo: "sin grupo M365 o token de aplicación" };
+          resultados.grupo = {
+            skipped: true,
+            motivo: !groupId ? "el proyecto no tiene Grupo M365" : "responsable sin conexión de Outlook válida",
+          };
         }
       } else {
         resultados.grupo = { skipped: true, motivo: "sin ms_group_event_id o proyecto_id" };
@@ -346,9 +340,16 @@ Deno.serve(async (req) => {
 
       const infoProyecto = await obtenerInfoProyecto(supabaseAdmin, tarea.proyecto_id);
 
+      // Un solo token delegado del responsable para las dos sync (ver
+      // nota en sincronizarCalendarioGrupo sobre por qué ya no hay un
+      // token de aplicación aparte para el calendario del grupo).
+      const accessToken = tarea.responsable_id
+        ? await obtenerAccessTokenResponsable(supabaseAdmin, tarea.responsable_id)
+        : null;
+
       const [personal, grupo] = await Promise.all([
-        sincronizarCalendarioPersonal(supabaseAdmin, tarea, infoProyecto),
-        sincronizarCalendarioGrupo(supabaseAdmin, tarea, infoProyecto),
+        sincronizarCalendarioPersonal(supabaseAdmin, tarea, infoProyecto, accessToken),
+        sincronizarCalendarioGrupo(supabaseAdmin, tarea, infoProyecto, accessToken),
       ]);
 
       return jsonResponse({ ok: true, personal, grupo });

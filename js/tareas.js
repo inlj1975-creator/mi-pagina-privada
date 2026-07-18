@@ -276,20 +276,12 @@ form.addEventListener("submit", async (event) => {
     !esAsignacionNueva &&
     (payload.fecha_inicio !== editingFechaInicioPrevia || payload.fecha_termino !== editingFechaTerminoPrevia);
 
-  if (payload.responsable_id) {
-    try {
-      const { error: syncError } = await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
-        body: { tarea_id: data.id, accion: "upsert" },
-      });
-      if (syncError) console.error("ms-sync-evento-tarea:", syncError);
-    } catch (e) {
-      console.error("ms-sync-evento-tarea:", e);
-    }
-  }
-
   // Grupo M365 del proyecto: agrega al responsable de esta tarea como
-  // miembro (aditivo, nunca saca a nadie). El backend decide si el
-  // proyecto ya tiene grupo o hay que crearlo.
+  // miembro (aditivo, nunca saca a nadie) ANTES de sincronizar el
+  // calendario -- ms-sync-evento-tarea escribe en el calendario del grupo
+  // usando la conexión del propio responsable, que solo funciona si ya es
+  // miembro. El backend decide si el proyecto ya tiene grupo o hay que
+  // crearlo.
   if (payload.proyecto_id) {
     try {
       const { error: grupoError } = await window.supabaseClient.functions.invoke("ms-sync-grupo-proyecto", {
@@ -298,6 +290,17 @@ form.addEventListener("submit", async (event) => {
       if (grupoError) console.error("ms-sync-grupo-proyecto:", grupoError);
     } catch (e) {
       console.error("ms-sync-grupo-proyecto:", e);
+    }
+  }
+
+  if (payload.responsable_id) {
+    try {
+      const { error: syncError } = await window.supabaseClient.functions.invoke("ms-sync-evento-tarea", {
+        body: { tarea_id: data.id, accion: "upsert" },
+      });
+      if (syncError) console.error("ms-sync-evento-tarea:", syncError);
+    } catch (e) {
+      console.error("ms-sync-evento-tarea:", e);
     }
   }
 

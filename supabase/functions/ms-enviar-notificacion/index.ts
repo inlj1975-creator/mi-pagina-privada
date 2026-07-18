@@ -1,15 +1,15 @@
 // Manda un email avisando que se le asignó una tarea a alguien. A
 // diferencia de ms-sync-evento-tarea, acá no hace falta el OAuth de nadie
-// en particular: se manda con permiso de APLICACIÓN (Mail.Send), con
+// en particular: se manda "como" una casilla fija de la empresa
+// (MS_REMITENTE_EMAIL) usando permiso de APLICACIÓN (Mail.Send), con
 // client credentials — por eso no depende de que el responsable haya
 // conectado su Outlook.
 //
-// Desde la Fase 2 de "Proyectos ampliados": si la tarea pertenece a un
-// proyecto que ya tiene Grupo M365, se manda "como" ese grupo
-// (/groups/{id}/sendMail) en vez de la casilla fija MS_REMITENTE_EMAIL. Si
-// el proyecto no tiene grupo (o el envío como grupo falla), cae de vuelta
-// al comportamiento de siempre — este cambio nunca debe dejar una
-// notificación sin mandarse.
+// La Fase 2 de "Proyectos ampliados" probó mandar "como" el Grupo M365 del
+// proyecto (POST /groups/{id}/sendMail), pero ese endpoint no existe en
+// Microsoft Graph -- un grupo no tiene una acción de "enviar mail" propia
+// (solo Conversations/Threads, un mecanismo distinto a un mail 1 a 1). Se
+// revirtió a mandar siempre desde la casilla fija.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -54,17 +54,6 @@ async function obtenerInfoProyecto(supabaseAdmin: any, proyectoId: string | null
     clienteNombre ? `\nCliente: ${clienteNombre}` : "",
     proyecto.descripcion ? `\nDescripción del proyecto: ${proyecto.descripcion}` : "",
   ].join("");
-}
-
-// deno-lint-ignore no-explicit-any
-async function obtenerGrupoDeProyecto(supabaseAdmin: any, proyectoId: string | null) {
-  if (!proyectoId) return null;
-  const { data } = await supabaseAdmin
-    .from("proyectos")
-    .select("ms_group_id")
-    .eq("id", proyectoId)
-    .maybeSingle();
-  return data?.ms_group_id || null;
 }
 
 async function obtenerAccessTokenAplicacion() {
@@ -147,50 +136,22 @@ Deno.serve(async (req) => {
     const asunto =
       motivo === "fechas" ? `Cambiaron las fechas: ${tarea.titulo}` : `Nueva tarea asignada: ${tarea.titulo}`;
 
-    const mensaje = {
-      message: {
-        subject: asunto,
-        body: { contentType: "Text", content: cuerpo },
-        toRecipients: [{ emailAddress: { address: perfil.email } }],
+    const remitente = Deno.env.get("MS_REMITENTE_EMAIL");
+
+    const mailResp = await fetch(`https://graph.microsoft.com/v1.0/users/${remitente}/sendMail`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-    };
-
-    // Preferencia: mandar "como" el grupo del proyecto (si existe). Si el
-    // proyecto no tiene grupo, o el envío como grupo falla por lo que sea,
-    // cae de vuelta a la casilla fija de siempre — este cambio de
-    // comportamiento nunca debe dejar una notificación sin mandarse.
-    const groupId = await obtenerGrupoDeProyecto(supabaseAdmin, tarea.proyecto_id);
-
-    let enviadoComoGrupo = false;
-    let mailResp: Response | null = null;
-    // Guarda el motivo del intento como grupo (si se probó y falló), para
-    // poder diagnosticarlo sin adivinar -- antes esto se perdía en
-    // silencio si terminaba usando el fallback.
-    let errorComoGrupo: string | null = null;
-
-    if (groupId) {
-      mailResp = await fetch(`https://graph.microsoft.com/v1.0/groups/${groupId}/sendMail`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(mensaje),
-      });
-      enviadoComoGrupo = mailResp.ok;
-
-      if (!mailResp.ok) {
-        const errorBody = await mailResp.json().catch(() => ({}));
-        errorComoGrupo = `${mailResp.status} ${errorBody.error?.message || "sin detalle"}`;
-      }
-    }
-
-    if (!mailResp || !mailResp.ok) {
-      const remitente = Deno.env.get("MS_REMITENTE_EMAIL");
-      mailResp = await fetch(`https://graph.microsoft.com/v1.0/users/${remitente}/sendMail`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(mensaje),
-      });
-      enviadoComoGrupo = false;
-    }
+      body: JSON.stringify({
+        message: {
+          subject: asunto,
+          body: { contentType: "Text", content: cuerpo },
+          toRecipients: [{ emailAddress: { address: perfil.email } }],
+        },
+      }),
+    });
 
     if (!mailResp.ok) {
       const errorBody = await mailResp.json().catch(() => ({}));
@@ -200,7 +161,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    return jsonResponse({ ok: true, enviado_como_grupo: enviadoComoGrupo, error_como_grupo: errorComoGrupo });
+    return jsonResponse({ ok: true });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }
