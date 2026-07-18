@@ -307,6 +307,15 @@ proyecto_id, perfil_id_extra? }`):
 - Guardado de una tarea con `proyecto_id` (`js/tareas.js`), pasando el
   `responsable_id` de esa tarea como `perfil_id_extra`.
 
+**Borrar un proyecto NO borra su grupo.** `deleteProject()` en
+`js/projects.js` solo borra la fila de `proyectos`; el Grupo M365 asociado
+queda huérfano en Microsoft (con su calendario y los archivos de las 3
+carpetas intactos). Decisión deliberada: borrar el grupo automáticamente
+sería irreversible desde la app (se pierden los archivos de SharePoint sin
+forma de restaurarlos desde acá) por un borrado que puede ser accidental.
+Si hace falta limpiar un grupo huérfano, se borra a mano desde
+admin.microsoft.com → Grupos.
+
 La función es idempotente vía `proyectos.ms_group_id` (columna nueva,
 sección 25 de `sql/schema.sql`): si ya tiene valor, no se vuelve a crear el
 grupo, solo se re-sincroniza membresía. `proyectos.ms_group_email` guarda
